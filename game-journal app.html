@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GAME LOG">
+<meta name="theme-color" content="#0e0e12">
+<title>GAME LOG</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+SC:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e12;
+    --surface: #17171e;
+    --surface2: #1f1f28;
+    --border: #2a2a36;
+    --accent: #e8ff47;
+    --accent2: #ff4757;
+    --text: #f0f0f0;
+    --text-muted: #6b6b80;
+    --text-dim: #3a3a4a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── VIEWS ─── */
+  .view { display: none; min-height: 100vh; }
+  .view.active { display: block; }
+
+  /* ─── HEADER ─── */
+  .app-header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    height: 64px;
+  }
+  .logo {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    user-select: none;
+  }
+  .logo span { color: var(--text-muted); }
+
+  .btn-add {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.1s;
+  }
+  .btn-add:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-add:active { transform: translateY(0); }
+
+  /* ─── MAIN GALLERY ─── */
+  #view-main { padding-bottom: 80px; }
+
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: calc(100vh - 64px);
+    gap: 16px;
+    color: var(--text-dim);
+  }
+  .empty-state .big-icon { font-size: 64px; opacity: 0.3; }
+  .empty-state p { font-size: 14px; letter-spacing: 1px; }
+
+  .year-section { padding: 40px 32px 0; }
+  .year-label {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 72px;
+    line-height: 1;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    border-left: 4px solid var(--accent);
+    padding-left: 16px;
+  }
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+  .game-card {
+    cursor: pointer;
+    position: relative;
+    aspect-ratio: 3/4;
+    overflow: hidden;
+    background: var(--surface);
+    transition: transform 0.2s;
+  }
+  .game-card:hover { transform: translateY(-4px); }
+  .game-card:hover .card-overlay { opacity: 1; }
+  .game-card img {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block;
+  }
+  .game-card .placeholder-cover {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 8px;
+    background: var(--surface2);
+    font-size: 32px;
+  }
+  .card-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 40%, transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 12px;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-score {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+  .card-badge {
+    position: absolute; top: 8px; right: 8px;
+    font-size: 10px; font-weight: 700;
+    padding: 3px 6px;
+    letter-spacing: 0.5px;
+  }
+  .badge-clear { background: var(--accent); color: var(--bg); }
+  .badge-playing { background: #00cfff; color: var(--bg); }
+  .badge-drop { background: var(--text-dim); color: var(--text); }
+  .badge-achieve {
+    background: transparent;
+    padding: 0;
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* platform icon top-left */
+  .card-platform {
+    position: absolute; top: 8px; left: 8px;
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px;
+  }
+  .card-platform svg { width: 20px; height: 20px; display: block; }
+
+  /* ─── DETAIL VIEW ─── */
+  #view-detail { padding-bottom: 80px; }
+
+  .detail-header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 32px; height: 64px;
+  }
+  .btn-back {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    background: none; border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 8px 14px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-back:hover { border-color: var(--text-muted); color: var(--text); }
+
+  .detail-header-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px; letter-spacing: 2px;
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .btn-edit {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    background: none; border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px 14px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-edit:hover { background: var(--accent); color: var(--bg); }
+
+  .detail-hero {
+    display: flex; gap: 48px;
+    padding: 48px 32px;
+    align-items: flex-start;
+  }
+  .detail-cover {
+    flex-shrink: 0;
+    width: 200px; aspect-ratio: 3/4;
+    background: var(--surface2);
+    overflow: hidden;
+  }
+  .detail-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .detail-cover .placeholder-cover {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px;
+  }
+
+  .detail-info { flex: 1; min-width: 0; }
+  .detail-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 48px; line-height: 1;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    word-break: break-word;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .meta-item {
+    background: var(--surface);
+    padding: 16px;
+  }
+  .meta-label {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-family: 'Space Mono', monospace;
+  }
+  .meta-value { font-size: 15px; font-weight: 500; }
+
+  .status-chip {
+    display: inline-block;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+  }
+
+  .rating-display {
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .rating-num {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 40px; line-height: 1;
+    color: var(--accent);
+  }
+  .rating-max {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px; color: var(--text-muted);
+  }
+
+  .detail-review {
+    padding: 0 32px 32px;
+  }
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 3px; text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .review-text {
+    font-size: 15px; line-height: 1.9;
+    color: #c0c0cc;
+    white-space: pre-wrap;
+    background: var(--surface);
+    padding: 24px;
+    border-left: 3px solid var(--accent);
+  }
+  .review-empty { color: var(--text-dim); font-size: 14px; padding: 24px; }
+
+  /* ─── FORM VIEW ─── */
+  #view-form { padding-bottom: 80px; }
+
+  .form-header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 32px; height: 64px;
+  }
+  .form-header-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px; letter-spacing: 2px;
+    flex: 1;
+  }
+
+  .form-body { padding: 40px 32px; max-width: 640px; }
+
+  .form-group { margin-bottom: 28px; }
+  .form-label {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 15px;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent);
+  }
+  .form-select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b80' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+  }
+  .form-select option { background: var(--surface); }
+  .form-textarea { resize: vertical; min-height: 120px; line-height: 1.7; }
+
+  .cover-preview-wrap {
+    display: flex; gap: 20px; align-items: flex-start;
+  }
+  .cover-preview {
+    width: 100px; aspect-ratio: 3/4;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: var(--text-dim);
+  }
+  .cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .cover-input-area { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .cover-hint {
+    font-size: 12px; color: var(--text-muted); line-height: 1.6;
+  }
+
+  .rating-input-wrap { display: flex; align-items: center; gap: 16px; }
+  .rating-slider {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 4px; background: var(--border);
+    outline: none; cursor: pointer;
+  }
+  .rating-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .rating-slider::-moz-range-thumb {
+    width: 18px; height: 18px;
+    background: var(--accent);
+    cursor: pointer; border: none;
+  }
+  .rating-val {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 32px; color: var(--accent);
+    min-width: 40px; text-align: right;
+  }
+
+  .form-actions { display: flex; gap: 12px; margin-top: 40px; }
+  .btn-save {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 2px;
+    background: var(--accent); color: var(--bg);
+    border: none; padding: 14px 32px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-save:hover { opacity: 0.85; }
+  .btn-cancel {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 2px;
+    background: none; color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 14px 24px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-cancel:hover { border-color: var(--text-muted); color: var(--text); }
+  .btn-delete {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 2px;
+    background: none; color: var(--accent2);
+    border: 1px solid var(--accent2);
+    padding: 14px 24px;
+    cursor: pointer;
+    margin-left: auto;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-delete:hover { background: var(--accent2); color: #fff; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .year-section { animation: fadeUp 0.4s ease both; }
+  .year-section:nth-child(1) { animation-delay: 0.05s; }
+  .year-section:nth-child(2) { animation-delay: 0.1s; }
+  .year-section:nth-child(3) { animation-delay: 0.15s; }
+  .year-section:nth-child(4) { animation-delay: 0.2s; }
+
+  /* responsive */
+  @media (max-width: 600px) {
+    .app-header, .detail-header, .form-header { padding: 0 16px; }
+    .year-section { padding: 28px 16px 0; }
+    .year-label { font-size: 48px; }
+    .detail-hero { flex-direction: column; padding: 24px 16px; }
+    .detail-cover { width: 140px; }
+    .detail-title { font-size: 32px; }
+    .detail-review { padding: 0 16px 24px; }
+    .form-body { padding: 24px 16px; }
+    .games-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+    .meta-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ MAIN VIEW ══════════════ -->
+<div id="view-main" class="view active">
+  <header class="app-header">
+    <div class="logo">GAME<span>LOG</span></div>
+    <button class="btn-add" onclick="openForm(null)">＋ 新增游戏</button>
+  </header>
+  <div id="gallery-container"></div>
+</div>
+
+<!-- ══════════════ DETAIL VIEW ══════════════ -->
+<div id="view-detail" class="view">
+  <header class="detail-header">
+    <button class="btn-back" onclick="showView('main')">← BACK</button>
+    <div class="detail-header-title" id="detail-header-title"></div>
+    <button class="btn-edit" onclick="openForm(currentGameId)">编辑</button>
+  </header>
+  <div id="detail-content"></div>
+</div>
+
+<!-- ══════════════ FORM VIEW ══════════════ -->
+<div id="view-form" class="view">
+  <header class="form-header">
+    <button class="btn-back" id="form-back-btn">← BACK</button>
+    <div class="form-header-title" id="form-title">新增游戏</div>
+  </header>
+  <div class="form-body">
+    <input type="hidden" id="f-id">
+
+    <div class="form-group">
+      <label class="form-label">游戏封面</label>
+      <div class="cover-preview-wrap">
+        <div class="cover-preview" id="cover-preview">🎮</div>
+        <div class="cover-input-area">
+          <input type="file" id="f-cover-file" accept="image/*" style="display:none" onchange="handleCoverFile(this)">
+          <button class="btn-cancel" style="width:fit-content" onclick="document.getElementById('f-cover-file').click()">上传图片</button>
+          <div class="cover-hint">支持 JPG / PNG / WebP<br>也可以填入图片网址↓</div>
+          <input class="form-input" type="url" id="f-cover-url" placeholder="https://..." oninput="previewUrl(this.value)">
+          <input type="hidden" id="f-cover-data">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">游戏标题 *</label>
+      <input class="form-input" type="text" id="f-title" placeholder="输入游戏名称">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">发售日期</label>
+      <input class="form-input" type="date" id="f-release">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">我的记录时间</label>
+      <input class="form-input" type="date" id="f-log-date">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">游玩平台</label>
+      <select class="form-select" id="f-platform">
+        <option value="">不指定</option>
+        <option value="nintendo">任天堂</option>
+        <option value="sony">索尼</option>
+        <option value="microsoft">微软</option>
+        <option value="pc">PC</option>
+        <option value="mobile">手机</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">通关情况</label>
+      <select class="form-select" id="f-status">
+        <option value="playing">游玩中</option>
+        <option value="clear">已通关</option>
+        <option value="achieve">全成就</option>
+        <option value="drop">放弃了</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">我的评分 — <span id="rating-label">—</span></label>
+      <div class="rating-input-wrap">
+        <input class="rating-slider" type="range" id="f-rating" min="0" max="10" step="0.5" value="0" oninput="updateRatingLabel(this.value)">
+        <div class="rating-val" id="rating-display">—</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">短评</label>
+      <textarea class="form-textarea" id="f-review" placeholder="写下你的感受..."></textarea>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-save" onclick="saveGame()">保存</button>
+      <button class="btn-cancel" id="form-cancel-btn">取消</button>
+      <button class="btn-delete" id="form-delete-btn" style="display:none" onclick="deleteGame()">删除记录</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════ DATA ══════════
+const STORAGE_KEY = 'gamelog_v1';
+let games = [];
+let currentGameId = null;
+let formReturnView = 'main';
+
+function loadGames() {
+  try { games = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch(e) { games = []; }
+}
+function saveGames() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(games));
+}
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+
+// ══════════ VIEWS ══════════
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ══════════ GALLERY ══════════
+const STATUS_MAP = {
+  clear:   { label: '通关', cls: 'badge-clear' },
+  playing: { label: '游玩中', cls: 'badge-playing' },
+  drop:    { label: '放弃', cls: 'badge-drop' },
+  achieve: { label: '全成就', cls: 'badge-achieve' },
+};
+
+// Flat SVG icons for each platform
+const PLATFORM_MAP = {
+  nintendo: {
+    label: '任天堂',
+    color: '#E60012',
+    svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="4" width="7" height="12" rx="3.5" fill="#E60012"/>
+      <rect x="12" y="4" width="7" height="12" rx="3.5" fill="#E60012"/>
+      <rect x="7" y="8.5" width="6" height="3" fill="#E60012"/>
+      <circle cx="4.5" cy="8" r="1.5" fill="white"/>
+      <circle cx="15.5" cy="12" r="1.5" fill="white"/>
+    </svg>`
+  },
+  sony: {
+    label: '索尼',
+    color: '#003087',
+    svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="10" cy="10" r="9" fill="#003087"/>
+      <circle cx="10" cy="6.5" r="2" fill="white"/>
+      <rect x="8" y="9.5" width="4" height="1.2" rx="0.6" fill="white"/>
+      <polygon points="7.2,12 12.8,12 10,16" fill="white"/>
+      <rect x="7" y="11.2" width="1.5" height="3.5" rx="0.4" fill="white"/>
+      <rect x="11.5" y="11.2" width="1.5" height="3.5" rx="0.4" fill="white"/>
+    </svg>`
+  },
+  microsoft: {
+    label: '微软',
+    color: '#107C10',
+    svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="10" cy="10" r="9" fill="#107C10"/>
+      <path d="M10 3.5 L16.5 10 L10 16.5 L3.5 10 Z" fill="none" stroke="white" stroke-width="1.8"/>
+      <path d="M10 6 L14 10 L10 14 L6 10 Z" fill="white" opacity="0.25"/>
+      <circle cx="10" cy="10" r="2" fill="white"/>
+    </svg>`
+  },
+  pc: {
+    label: 'PC',
+    color: '#4a9eff',
+    svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="3" width="16" height="11" rx="1.5" fill="#4a9eff"/>
+      <rect x="3.5" y="4.5" width="13" height="8" rx="0.5" fill="#0e0e12"/>
+      <rect x="7" y="14" width="6" height="1.5" fill="#4a9eff"/>
+      <rect x="5.5" y="15.5" width="9" height="1.2" rx="0.6" fill="#4a9eff"/>
+    </svg>`
+  },
+  mobile: {
+    label: '手机',
+    color: '#aaaaaa',
+    svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="5.5" y="1.5" width="9" height="17" rx="2" fill="#aaaaaa"/>
+      <rect x="7" y="3" width="6" height="11" rx="0.5" fill="#0e0e12"/>
+      <circle cx="10" cy="16.5" r="1" fill="#0e0e12"/>
+    </svg>`
+  },
+};
+
+function renderGallery() {
+  const container = document.getElementById('gallery-container');
+  if (!games.length) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="big-icon">🕹️</div>
+      <p>还没有记录 — 点击右上角新增游戏</p>
+    </div>`;
+    return;
+  }
+
+  // group by year (logDate or releaseDate year)
+  const byYear = {};
+  games.forEach(g => {
+    const y = g.logDate ? g.logDate.slice(0,4) : (g.releaseDate ? g.releaseDate.slice(0,4) : '未知');
+    if (!byYear[y]) byYear[y] = [];
+    byYear[y].push(g);
+  });
+  // sort years desc
+  const years = Object.keys(byYear).sort((a,b) => b - a);
+
+  container.innerHTML = years.map(year => {
+    const gs = byYear[year].sort((a,b) => {
+      const da = a.logDate || a.releaseDate || '';
+      const db = b.logDate || b.releaseDate || '';
+      return da < db ? -1 : 1;
+    });
+    return `<div class="year-section">
+      <div class="year-label">${year}</div>
+      <div class="games-grid">${gs.map(gameCard).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function gameCard(g) {
+  const st = STATUS_MAP[g.status] || {};
+  const cover = g.coverData
+    ? `<img src="${g.coverData}" alt="${esc(g.title)}">`
+    : `<div class="placeholder-cover">🎮</div>`;
+
+  // Right badge: only show for non-achieve statuses (achieve gets trophy icon)
+  let badgeHtml = '';
+  if (g.status === 'achieve') {
+    badgeHtml = `<div class="card-badge badge-achieve">
+      <svg viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" width="26" height="26">
+        <circle cx="13" cy="13" r="13" fill="#e8c84a"/>
+        <path d="M13 6 L14.8 11H20L15.6 14.2L17.4 19.2L13 16L8.6 19.2L10.4 14.2L6 11H11.2Z" fill="#7a5c00"/>
+      </svg>
+    </div>`;
+  } else if (st.cls) {
+    badgeHtml = `<div class="card-badge ${st.cls}">${st.label}</div>`;
+  }
+
+  // Left platform icon
+  const plat = PLATFORM_MAP[g.platform];
+  const platHtml = plat
+    ? `<div class="card-platform" style="background:rgba(0,0,0,0.55)">${plat.svg}</div>`
+    : '';
+
+  return `<div class="game-card" onclick="openDetail('${g.id}')">
+    ${cover}
+    ${platHtml}
+    ${badgeHtml}
+    <div class="card-overlay">
+      <div class="card-title">${esc(g.title)}</div>
+      ${g.rating != null && g.rating !== '' ? `<div class="card-score">★ ${g.rating}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ══════════ DETAIL ══════════
+function openDetail(id) {
+  currentGameId = id;
+  const g = games.find(x => x.id === id);
+  if (!g) return;
+
+  document.getElementById('detail-header-title').textContent = g.title;
+
+  const st = STATUS_MAP[g.status] || {};
+  const stColor = g.status === 'clear' ? 'var(--accent)' : g.status === 'achieve' ? '#e8c84a' : g.status === 'playing' ? '#00cfff' : 'var(--text-muted)';
+  const cover = g.coverData
+    ? `<img src="${g.coverData}" alt="${esc(g.title)}">`
+    : `<div class="placeholder-cover">🎮</div>`;
+
+  const ratingHtml = (g.rating != null && g.rating !== '')
+    ? `<div class="rating-display"><span class="rating-num">${g.rating}</span><span class="rating-max">/ 10</span></div>`
+    : '<span style="color:var(--text-dim)">未评分</span>';
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-hero">
+      <div class="detail-cover">${cover}</div>
+      <div class="detail-info">
+        <div class="detail-title">${esc(g.title)}</div>
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="meta-label">游玩平台</div>
+            <div class="meta-value" style="display:flex;align-items:center;gap:8px">
+              ${PLATFORM_MAP[g.platform] ? `<span style="display:inline-flex;width:20px;height:20px">${PLATFORM_MAP[g.platform].svg}</span>${PLATFORM_MAP[g.platform].label}` : '—'}
+            </div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">发售日期</div>
+            <div class="meta-value">${g.releaseDate || '—'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">记录时间</div>
+            <div class="meta-value">${g.logDate || '—'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">通关情况</div>
+            <div class="meta-value">
+              <span class="status-chip" style="background:${stColor};color:${g.status === 'drop' ? 'var(--text)' : 'var(--bg)'}">${st.label||'—'}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">我的评分</div>
+            <div class="meta-value">${ratingHtml}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="detail-review">
+      <div class="section-label">短评</div>
+      ${g.review
+        ? `<div class="review-text">${esc(g.review)}</div>`
+        : `<div class="review-empty">还没有短评</div>`}
+    </div>`;
+
+  showView('detail');
+}
+
+// ══════════ FORM ══════════
+let ratingUnset = true;
+
+function openForm(id) {
+  formReturnView = id ? 'detail' : 'main';
+  document.getElementById('form-back-btn').onclick = () => showView(formReturnView);
+  document.getElementById('form-cancel-btn').onclick = () => showView(formReturnView);
+
+  if (id) {
+    const g = games.find(x => x.id === id);
+    document.getElementById('form-title').textContent = '编辑游戏';
+    document.getElementById('f-id').value = g.id;
+    document.getElementById('f-title').value = g.title || '';
+    document.getElementById('f-release').value = g.releaseDate || '';
+    document.getElementById('f-log-date').value = g.logDate || '';
+    document.getElementById('f-status').value = g.status || 'playing';
+    document.getElementById('f-platform').value = g.platform || '';
+    document.getElementById('f-review').value = g.review || '';
+    document.getElementById('f-cover-url').value = '';
+    document.getElementById('f-cover-data').value = g.coverData || '';
+
+    if (g.coverData) {
+      document.getElementById('cover-preview').innerHTML = `<img src="${g.coverData}" alt="">`;
+    } else {
+      document.getElementById('cover-preview').innerHTML = '🎮';
+    }
+
+    if (g.rating != null && g.rating !== '') {
+      ratingUnset = false;
+      document.getElementById('f-rating').value = g.rating;
+      updateRatingLabel(g.rating);
+    } else {
+      ratingUnset = true;
+      document.getElementById('f-rating').value = 0;
+      document.getElementById('rating-display').textContent = '—';
+      document.getElementById('rating-label').textContent = '—';
+    }
+    document.getElementById('form-delete-btn').style.display = 'inline-block';
+  } else {
+    document.getElementById('form-title').textContent = '新增游戏';
+    document.getElementById('f-id').value = '';
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-release').value = '';
+    document.getElementById('f-log-date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('f-status').value = 'playing';
+    document.getElementById('f-platform').value = '';
+    document.getElementById('f-review').value = '';
+    document.getElementById('f-cover-url').value = '';
+    document.getElementById('f-cover-data').value = '';
+    document.getElementById('cover-preview').innerHTML = '🎮';
+    ratingUnset = true;
+    document.getElementById('f-rating').value = 0;
+    document.getElementById('rating-display').textContent = '—';
+    document.getElementById('rating-label').textContent = '—';
+    document.getElementById('form-delete-btn').style.display = 'none';
+  }
+
+  showView('form');
+}
+
+function updateRatingLabel(val) {
+  ratingUnset = false;
+  document.getElementById('rating-display').textContent = val;
+  document.getElementById('rating-label').textContent = val + ' / 10';
+}
+
+// clicking slider always sets it
+document.getElementById('f-rating').addEventListener('mousedown', () => { ratingUnset = false; });
+document.getElementById('f-rating').addEventListener('touchstart', () => { ratingUnset = false; });
+
+function handleCoverFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = e.target.result;
+    document.getElementById('f-cover-data').value = data;
+    document.getElementById('cover-preview').innerHTML = `<img src="${data}" alt="">`;
+    document.getElementById('f-cover-url').value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function previewUrl(url) {
+  if (!url) {
+    document.getElementById('cover-preview').innerHTML = '🎮';
+    document.getElementById('f-cover-data').value = '';
+    return;
+  }
+  // store url as data (we'll use it directly)
+  document.getElementById('f-cover-data').value = url;
+  document.getElementById('cover-preview').innerHTML = `<img src="${url}" alt="" onerror="this.parentElement.innerHTML='❌'">`;
+}
+
+function saveGame() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { alert('请填写游戏标题'); return; }
+
+  const id = document.getElementById('f-id').value || genId();
+  const rating = ratingUnset ? '' : document.getElementById('f-rating').value;
+
+  const g = {
+    id,
+    title,
+    releaseDate: document.getElementById('f-release').value,
+    logDate: document.getElementById('f-log-date').value,
+    status: document.getElementById('f-status').value,
+    platform: document.getElementById('f-platform').value,
+    rating,
+    review: document.getElementById('f-review').value.trim(),
+    coverData: document.getElementById('f-cover-data').value,
+  };
+
+  const idx = games.findIndex(x => x.id === id);
+  if (idx >= 0) games[idx] = g; else games.push(g);
+  saveGames();
+  currentGameId = id;
+  renderGallery();
+  openDetail(id);
+}
+
+function deleteGame() {
+  if (!confirm('确定要删除这条记录吗？')) return;
+  const id = document.getElementById('f-id').value;
+  games = games.filter(x => x.id !== id);
+  saveGames();
+  renderGallery();
+  showView('main');
+}
+
+function esc(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════ INIT ══════════
+loadGames();
+renderGallery();
+</script>
+</body>
+</html>
