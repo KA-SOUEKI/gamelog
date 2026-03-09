@@ -740,7 +740,7 @@
     <input type="hidden" id="f-id">
 
     <div class="form-group">
-      <label class="form-label">游戏封面</label>
+      <label class="form-label" id="lbl-cover">游戏封面</label>
       <div class="cover-preview-wrap">
         <div class="cover-preview" id="cover-preview">🎮</div>
         <div class="cover-input-area">
@@ -754,22 +754,22 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">游戏标题 *</label>
+      <label class="form-label" id="lbl-title">游戏标题 *</label>
       <input class="form-input" type="text" id="f-title" placeholder="输入游戏名称">
     </div>
 
     <div class="form-group">
-      <label class="form-label">发售日期</label>
+      <label class="form-label" id="lbl-release">发售日期</label>
       <input class="form-input" type="date" id="f-release">
     </div>
 
     <div class="form-group">
-      <label class="form-label">我的记录时间</label>
+      <label class="form-label" id="lbl-logdate">我的记录时间</label>
       <input class="form-input" type="date" id="f-log-date">
     </div>
 
     <div class="form-group">
-      <label class="form-label">游玩平台</label>
+      <label class="form-label" id="lbl-platform">游玩平台</label>
       <select class="form-select" id="f-platform">
         <option value="">不指定</option>
         <option value="nintendo">任天堂</option>
@@ -781,7 +781,7 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">通关情况</label>
+      <label class="form-label" id="lbl-status">通关情况</label>
       <select class="form-select" id="f-status">
         <option value="playing">游玩中</option>
         <option value="clear">已通关</option>
@@ -791,7 +791,7 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">我的评分 — <span id="rating-label">—</span></label>
+      <label class="form-label" id="lbl-rating">我的评分 — <span id="rating-label">—</span></label>
       <div class="rating-input-wrap">
         <input class="rating-slider" type="range" id="f-rating" min="0" max="10" step="0.5" value="0" oninput="updateRatingLabel(this.value)">
         <div class="rating-val" id="rating-display">—</div>
@@ -799,7 +799,7 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">短评</label>
+      <label class="form-label" id="lbl-review">短评</label>
       <textarea class="form-textarea" id="f-review" placeholder="写下你的感受..."></textarea>
     </div>
 
@@ -1273,7 +1273,7 @@ function esc(str) {
 }
 
 // ══════════ AUTO UPDATE ══════════
-const APP_VERSION = '20260310_003';
+const APP_VERSION = '20260310_004';
 const VERSION_STORAGE_KEY = 'gamelog_version';
 
 async function checkForUpdate() {
@@ -1321,22 +1321,62 @@ async function checkForUpdate() {
   }
 }
 
-function manualCheckUpdate() {
+async function manualCheckUpdate() {
   closeFab();
-  checkForUpdate().then(() => {
+  showUpdateToast('checking');
+  try {
+    const base = window.location.href.split('?')[0].split('#')[0];
+    const res = await fetch(base + '?bust=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
+    });
+    if (!res.ok) { showUpdateToast('error'); return; }
+    const html = await res.text();
+    const match = html.match(/APP_VERSION = '([^']+)'/);
+    if (!match) { showUpdateToast('error'); return; }
+    const remote = match[1];
+    if (remote === APP_VERSION) {
+      showUpdateToast('latest');
+    } else {
+      showUpdateToast('found', remote);
+      setTimeout(() => {
+        window.location.href = base + '?v=' + remote + '&t=' + Date.now();
+      }, 2200);
+    }
+  } catch(e) {
+    showUpdateToast('error');
+  }
+}
+
+function showUpdateToast(state, remoteVer) {
+  const toast = document.getElementById('update-toast');
+  if (!toast) return;
+  toast.classList.remove('show');
+  void toast.offsetWidth; // reflow
+  if (state === 'checking') {
+    toast.style.borderColor = 'var(--text-muted)';
+    toast.style.color = 'var(--text-muted)';
+    toast.textContent = '⟳ ' + t('updateChecking') + '...';
+  } else if (state === 'latest') {
+    toast.style.borderColor = 'var(--text-muted)';
+    toast.style.color = 'var(--text)';
+    toast.textContent = '✓ ' + t('alreadyLatest') + '  [v' + APP_VERSION + ']';
+  } else if (state === 'found') {
+    toast.style.borderColor = 'var(--accent)';
+    toast.style.color = 'var(--accent)';
+    toast.textContent = '⟳ ' + t('updateFound') + '  v' + APP_VERSION + ' → v' + remoteVer;
+  } else if (state === 'error') {
+    toast.style.borderColor = 'var(--accent2)';
+    toast.style.color = 'var(--accent2)';
+    toast.textContent = '✕ ' + t('updateError');
+  }
+  toast.classList.add('show');
+  if (state !== 'found') {
     setTimeout(() => {
-      const toast = document.getElementById('update-toast');
-      if (toast && !toast.classList.contains('show')) {
-        toast.textContent = t('alreadyLatest');
-        toast.style.borderColor = 'var(--text-muted)';
-        toast.classList.add('show');
-        setTimeout(() => {
-          toast.classList.remove('show');
-          setTimeout(() => { toast.style.borderColor = ''; }, 300);
-        }, 2000);
-      }
+      toast.classList.remove('show');
+      setTimeout(() => { toast.style.borderColor = ''; toast.style.color = ''; }, 300);
     }, 3000);
-  });
+  }
 }
 
 // ══════════ I18N ══════════
@@ -1403,6 +1443,9 @@ const I18N = {
     alertNoTitle:    t('alertNoTitle'),
     updateToast:     '⟳ 发现新版本，正在更新…',
     alreadyLatest:   '✓ 已是最新版本',
+    updateChecking:  '正在检查更新',
+    updateFound:     '发现新版本，正在更新',
+    updateError:     '检查更新失败，请检查网络',
     langModalTitle:  'LANGUAGE',
   },
   ja: {
@@ -1464,6 +1507,9 @@ const I18N = {
     alertNoTitle:    'タイトルを入力してください',
     updateToast:     '⟳ 新バージョンを検出、更新中…',
     alreadyLatest:   '✓ 最新バージョンです',
+    updateChecking:  '更新を確認中',
+    updateFound:     '新バージョンを検出、更新中',
+    updateError:     '更新確認失敗、ネットワークを確認',
     langModalTitle:  'LANGUAGE',
   },
   en: {
@@ -1525,6 +1571,9 @@ const I18N = {
     alertNoTitle:    'Please enter a game title',
     updateToast:     '⟳ New version found, updating…',
     alreadyLatest:   '✓ Already up to date',
+    updateChecking:  'Checking for updates',
+    updateFound:     'New version found, updating',
+    updateError:     'Update check failed, check network',
     langModalTitle:  'LANGUAGE',
   },
 };
@@ -1541,18 +1590,23 @@ function applyLang() {
   document.getElementById('form-delete-btn').textContent = t('btnDelete');
   document.querySelector('.btn-save').textContent = t('btnSave');
 
-  // Form labels
-  const labels = document.querySelectorAll('.form-label');
-  const labelKeys = ['labelCover','labelTitle','labelRelease','labelLogDate','labelPlatform','labelStatus',null,'labelReview'];
-  // rating label has a span inside, handle separately
-  labels.forEach((el, i) => {
-    if (i === 6) {
-      // rating label — keep span
-      el.innerHTML = t('labelRating') + ' — <span id="rating-label">—</span>';
-    } else if (labelKeys[i]) {
-      el.textContent = t(labelKeys[i]);
-    }
+  // Form labels - use data attributes for reliability
+  const labelMap = {
+    'lbl-cover': 'labelCover', 'lbl-title': 'labelTitle',
+    'lbl-release': 'labelRelease', 'lbl-logdate': 'labelLogDate',
+    'lbl-platform': 'labelPlatform', 'lbl-status': 'labelStatus',
+    'lbl-review': 'labelReview'
+  };
+  Object.entries(labelMap).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(key);
   });
+  // Rating label has a span inside
+  const ratingLbl = document.getElementById('lbl-rating');
+  if (ratingLbl) {
+    const cur = document.getElementById('rating-label') ? document.getElementById('rating-label').textContent : '—';
+    ratingLbl.innerHTML = t('labelRating') + ' — <span id="rating-label">' + cur + '</span>';
+  }
 
   // Platform options
   const platSel = document.getElementById('f-platform');
@@ -1593,8 +1647,8 @@ function applyLang() {
   if (fabLangLabel) fabLangLabel.textContent = t('fabLang');
   const fabUpdateLabel = document.getElementById('fab-update-label');
   if (fabUpdateLabel) fabUpdateLabel.textContent = t('fabUpdate');
-  const fabSearchItem = document.querySelector('.fab-menu-item[onclick="openSearch()"] .fab-menu-label');
-  if (fabSearchItem) fabSearchItem.textContent = t('fabSearch');
+  const fabSearchLabel = document.getElementById('fab-search-label');
+  if (fabSearchLabel) fabSearchLabel.textContent = t('fabSearch');
 
   // Search placeholder
   const searchInput = document.getElementById('search-input');
@@ -1628,6 +1682,12 @@ function setLang(lang) {
   currentLang = lang;
   localStorage.setItem(LANG_KEY, lang);
   applyLang();
+  // Re-render whichever view is active
+  if (document.getElementById('view-main').classList.contains('active')) {
+    renderGallery();
+  } else if (document.getElementById('view-detail').classList.contains('active') && currentGameId) {
+    openDetail(currentGameId);
+  }
   closeLangModal();
 }
 
@@ -1670,16 +1730,16 @@ document.addEventListener('DOMContentLoaded', function() {
         <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="#e8ff47" stroke-width="1.8"/><path d="M10 2.5C10 2.5 7 6 7 10s3 7.5 3 7.5M10 2.5C10 2.5 13 6 13 10s-3 7.5-3 7.5M2.5 10h15" stroke="#e8ff47" stroke-width="1.5" stroke-linecap="round"/></svg>
       </div>
     </div>
+    <div class="fab-menu-item" onclick="openSearch()">
+      <div class="fab-menu-label" id="fab-search-label">搜索游戏</div>
+      <div class="fab-mini">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5" stroke="#e8ff47" stroke-width="1.8"/><path d="M13 13l4 4" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+    </div>
     <div class="fab-menu-item" onclick="manualCheckUpdate()">
       <div class="fab-menu-label" id="fab-update-label">检查更新</div>
       <div class="fab-mini">
         <svg viewBox="0 0 20 20" fill="none"><path d="M3 10a7 7 0 0 1 13-3.5" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/><path d="M17 10a7 7 0 0 1-13 3.5" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/><polyline points="14,3 16.5,6.5 13,6.5" fill="#e8ff47"/><polyline points="6,17 3.5,13.5 7,13.5" fill="#e8ff47"/></svg>
-      </div>
-    </div>
-    <div class="fab-menu-item" onclick="openSearch()">
-      <div class="fab-menu-label">搜索游戏</div>
-      <div class="fab-mini">
-        <svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5" stroke="#e8ff47" stroke-width="1.8"/><path d="M13 13l4 4" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/></svg>
       </div>
     </div>
   </div>
