@@ -617,19 +617,21 @@
 
   /* ─── UPDATE TOAST ─── */
   .update-toast {
-    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
     background: var(--surface);
     border: 1px solid var(--accent);
     color: var(--text);
     font-family: 'Space Mono', monospace;
     font-size: 11px; letter-spacing: 1px;
     padding: 12px 20px;
-    white-space: nowrap;
-    z-index: 999;
+    white-space: pre;
+    z-index: 9999;
     display: none;
     pointer-events: none;
-    max-width: 90vw;
+    max-width: 92vw;
+    white-space: normal;
     text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
   }
 
   /* ─── LANGUAGE MODAL ─── */
@@ -713,7 +715,7 @@
 <div id="view-main" class="view active">
   <header class="app-header">
     <div class="logo">GAME<span>LOG</span></div>
-    <button class="btn-add" onclick="openForm(null)">＋ 新增游戏</button>
+    <button class="btn-add" id="btn-add" onclick="openForm(null)">＋ 新增游戏</button>
   </header>
   <div id="gallery-container"></div>
 </div>
@@ -1271,75 +1273,62 @@ function esc(str) {
 }
 
 // ══════════ AUTO UPDATE ══════════
-const APP_VERSION = '20260310_005';
+const APP_VERSION = '20260310_006';
 const VERSION_STORAGE_KEY = 'gamelog_version';
 
-async function checkForUpdate() {
-  try {
-    // Step 1: check if we just reloaded for an update
-    const pendingVersion = sessionStorage.getItem('gamelog_pending_version');
-    if (pendingVersion) {
-      sessionStorage.removeItem('gamelog_pending_version');
-      localStorage.setItem(VERSION_STORAGE_KEY, pendingVersion);
-      return; // just updated, no need to check again
-    }
-
-    // Step 2: fetch the remote file bypassing all caches
-    const baseUrl = window.location.href.split('?')[0].split('#')[0];
-    const fetchUrl = baseUrl + '?bust=' + Date.now();
-    const res = await fetch(fetchUrl, {
-      method: 'GET',
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
-    });
-    if (!res.ok) return;
-    const html = await res.text();
-
-    // Step 3: extract version from fetched HTML
-    const match = html.match(/APP_VERSION = '([^']+)'/);
-    if (!match || !match[1]) return;
-    const remoteVersion = match[1];
-
-    // Step 4: compare with current running version
-    if (remoteVersion !== APP_VERSION) {
-      // Store the new version so after reload we know we're updated
-      sessionStorage.setItem('gamelog_pending_version', remoteVersion);
-      // Show toast then hard reload with cache-busting URL
-      showUpdateToast('found', remoteVersion);
-      setTimeout(() => {
-        window.location.href = baseUrl + '?v=' + remoteVersion + '&t=' + Date.now();
-      }, 1800);
-    }
-  } catch(e) {
-    // offline or network error — silently ignore
-  }
-}
-
-async function manualCheckUpdate() {
-  closeFab();
-  showUpdateToast('checking');
-  try {
-    const base = window.location.href.split('?')[0].split('#')[0];
-    const res = await fetch(base + '?bust=' + Date.now(), {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
-    });
-    if (!res.ok) { showUpdateToast('error'); return; }
-    const html = await res.text();
-    const match = html.match(/APP_VERSION = '([^']+)'/);
-    if (!match) { showUpdateToast('error'); return; }
+function checkForUpdate() {
+  const baseUrl = window.location.href.split('?')[0].split('#')[0];
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', baseUrl + '?bust=' + Date.now(), true);
+  xhr.setRequestHeader('Cache-Control', 'no-cache');
+  xhr.timeout = 8000;
+  xhr.onload = function() {
+    if (xhr.status < 200 || xhr.status >= 300) return;
+    const match = xhr.responseText.match(/APP_VERSION = '([^']+)'/);
+    if (!match) return;
     const remote = match[1];
-    if (remote === APP_VERSION) {
-      showUpdateToast('latest');
-    } else {
+    if (remote !== APP_VERSION) {
       showUpdateToast('found', remote);
       setTimeout(() => {
-        window.location.href = base + '?v=' + remote + '&t=' + Date.now();
-      }, 2200);
+        window.location.href = baseUrl + '?v=' + remote + '&t=' + Date.now();
+      }, 1800);
     }
-  } catch(e) {
-    showUpdateToast('error');
-  }
+  };
+  xhr.onerror = function() {}; // silently ignore offline
+  xhr.send();
+}
+
+function manualCheckUpdate() {
+  closeFab();
+  showUpdateToast('checking');
+  const base = window.location.href.split('?')[0].split('#')[0];
+  const url = base + '?bust=' + Date.now();
+  // Use XMLHttpRequest — more reliable in iOS PWA than fetch
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.setRequestHeader('Cache-Control', 'no-cache');
+  xhr.setRequestHeader('Pragma', 'no-cache');
+  xhr.timeout = 8000;
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      const match = xhr.responseText.match(/APP_VERSION = '([^']+)'/);
+      if (!match) { showUpdateToast('error'); return; }
+      const remote = match[1];
+      if (remote === APP_VERSION) {
+        showUpdateToast('latest');
+      } else {
+        showUpdateToast('found', remote);
+        setTimeout(() => {
+          window.location.href = base + '?v=' + remote + '&t=' + Date.now();
+        }, 2200);
+      }
+    } else {
+      showUpdateToast('error');
+    }
+  };
+  xhr.onerror = function() { showUpdateToast('error'); };
+  xhr.ontimeout = function() { showUpdateToast('error'); };
+  xhr.send();
 }
 
 let toastTimer = null;
@@ -1582,11 +1571,11 @@ function t(key) {
 
 function applyLang() {
   // Static DOM elements
-  document.querySelector('.btn-add').textContent = t('btnAdd');
-  document.querySelector('.btn-edit').textContent = t('btnEdit');
-  document.getElementById('form-cancel-btn').textContent = t('btnCancel');
-  document.getElementById('form-delete-btn').textContent = t('btnDelete');
-  document.querySelector('.btn-save').textContent = t('btnSave');
+  const btnAdd = document.getElementById('btn-add'); if(btnAdd) btnAdd.textContent = t('btnAdd');
+  const btnEdit = document.querySelector('.btn-edit'); if(btnEdit) btnEdit.textContent = t('btnEdit');
+  const fcb = document.getElementById('form-cancel-btn'); if(fcb) fcb.textContent = t('btnCancel');
+  const fdb = document.getElementById('form-delete-btn'); if(fdb) fdb.textContent = t('btnDelete');
+  const btnSave = document.querySelector('.btn-save'); if(btnSave) btnSave.textContent = t('btnSave');
 
   // Form labels - use data attributes for reliability
   const labelMap = {
@@ -1677,11 +1666,17 @@ function applyLang() {
 }
 
 function setLang(lang) {
-  if (lang === currentLang) { closeLangModal(); return; }
+  closeLangModal();
+  if (lang === currentLang) return;
+  currentLang = lang;
   localStorage.setItem(LANG_KEY, lang);
-  // Reload page — language will be picked up fresh from localStorage on init
-  const base = window.location.href.split('?')[0].split('#')[0];
-  window.location.replace(base + '?lang=' + lang + '&t=' + Date.now());
+  // Update all static DOM text directly
+  applyLang();
+  // Re-render dynamic content
+  renderGallery();
+  if (document.getElementById('view-detail').classList.contains('active') && currentGameId) {
+    openDetail(currentGameId);
+  }
 }
 
 function openLangModal() {
