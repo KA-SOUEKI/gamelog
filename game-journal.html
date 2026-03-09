@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GAME LOG">
 <meta name="theme-color" content="#0e0e12">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>GAME LOG</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+SC:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -611,6 +614,25 @@
     .score-label { font-size: 40px; }
   }
 
+
+  /* ─── UPDATE TOAST ─── */
+  .update-toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; letter-spacing: 1px;
+    padding: 12px 20px;
+    white-space: nowrap;
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+  }
+  .update-toast.show {
+    opacity: 1; transform: translateX(-50%) translateY(0);
+  }
 </style>
 </head>
 <body>
@@ -1178,9 +1200,33 @@ function esc(str) {
   return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ══════════ AUTO UPDATE ══════════
+const APP_VERSION = '20260310_001';
+
+async function checkForUpdate() {
+  try {
+    const url = window.location.href.split('?')[0] + '?_=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return;
+    const html = await res.text();
+    const match = html.match(/APP_VERSION = '([^']+)'/);
+    if (match && match[1] && match[1] !== APP_VERSION) {
+      const toast = document.getElementById('update-toast');
+      toast.classList.add('show');
+      setTimeout(() => {
+        // Force reload bypassing cache
+        window.location.replace(window.location.href.split('?')[0] + '?_=' + Date.now());
+      }, 1800);
+    }
+  } catch(e) {
+    // offline or network error — silently ignore
+  }
+}
+
 // ══════════ INIT ══════════
 loadGames();
 renderGallery();
+checkForUpdate();
 </script>
 
 <!-- ══════════════ FAB MENU (main view only) ══════════════ -->
@@ -1217,5 +1263,7 @@ renderGallery();
   </div>
 </div>
 
+
+<div class="update-toast" id="update-toast">⟳ 发现新版本，正在更新…</div>
 </body>
 </html>
