@@ -812,8 +812,95 @@
 </div>
 
 <script>
+// ══════════ I18N — must be first ══════════
+const LANG_KEY = 'gamelog_lang';
+let currentLang = localStorage.getItem(LANG_KEY) || 'zh';
+
+const I18N = {
+  zh: {
+    btnAdd:'＋ 新增游戏', btnEdit:'编辑', btnSave:'保存', btnCancel:'取消',
+    btnDelete:'删除记录', formTitleNew:'新增游戏', formTitleEdit:'编辑游戏',
+    labelCover:'游戏封面', labelTitle:'游戏标题 *', labelRelease:'发售日期',
+    labelLogDate:'我的记录时间', labelPlatform:'游玩平台', labelStatus:'通关情况',
+    labelRating:'我的评分', labelReview:'短评',
+    placeholderTitle:'输入游戏名称', placeholderReview:'写下你的感受...',
+    coverHint:'支持 JPG / PNG / WebP<br>也可以填入图片网址↓', btnUploadImg:'上传图片',
+    platNone:'不指定', platNintendo:'任天堂', platSony:'索尼',
+    platMicrosoft:'微软', platPC:'PC', platMobile:'手机',
+    statusPlaying:'游玩中', statusClear:'已通关', statusAchieve:'全成就', statusDrop:'放弃了',
+    statusPlayingShort:'游玩中', statusClearShort:'通关', statusAchieveShort:'全成就', statusDropShort:'放弃',
+    metaPlatform:'游玩平台', metaRelease:'发售日期', metaLogDate:'记录时间',
+    metaStatus:'通关情况', metaRating:'我的评分', metaReviewSection:'短评',
+    noReview:'还没有短评', unrated:'未评分', unknownYear:'未知',
+    emptyState:'还没有记录 — 点击右上角新增游戏',
+    fabSortToRating:'切换为评分排序', fabSortToTime:'切换为时间排序',
+    fabSearch:'搜索游戏', fabLang:'切换语言', fabUpdate:'检查更新',
+    searchPlaceholder:'搜索游戏标题...', searchHint:'输入关键词开始搜索',
+    searchEmpty:'没有找到匹配的游戏',
+    deleteConfirm:'确定要删除这条记录吗？', alertNoTitle:'请填写游戏标题',
+    updateChecking:'正在检查更新', updateFound:'发现新版本，正在更新',
+    alreadyLatest:'已是最新版本', updateError:'检查更新失败，请检查网络',
+    langModalTitle:'LANGUAGE',
+  },
+  ja: {
+    btnAdd:'＋ ゲームを追加', btnEdit:'編集', btnSave:'保存', btnCancel:'キャンセル',
+    btnDelete:'記録を削除', formTitleNew:'ゲームを追加', formTitleEdit:'ゲームを編集',
+    labelCover:'カバー画像', labelTitle:'ゲームタイトル *', labelRelease:'発売日',
+    labelLogDate:'記録日', labelPlatform:'プラットフォーム', labelStatus:'進捗状況',
+    labelRating:'マイスコア', labelReview:'レビュー',
+    placeholderTitle:'タイトルを入力', placeholderReview:'感想を書いてください...',
+    coverHint:'JPG / PNG / WebP 対応<br>または画像URLを入力↓', btnUploadImg:'画像をアップロード',
+    platNone:'指定なし', platNintendo:'任天堂', platSony:'ソニー',
+    platMicrosoft:'マイクロソフト', platPC:'PC', platMobile:'スマホ',
+    statusPlaying:'プレイ中', statusClear:'クリア済み', statusAchieve:'全実績', statusDrop:'ドロップ',
+    statusPlayingShort:'プレイ中', statusClearShort:'クリア', statusAchieveShort:'全実績', statusDropShort:'ドロップ',
+    metaPlatform:'プラットフォーム', metaRelease:'発売日', metaLogDate:'記録日',
+    metaStatus:'進捗状況', metaRating:'マイスコア', metaReviewSection:'レビュー',
+    noReview:'レビューなし', unrated:'未評価', unknownYear:'不明',
+    emptyState:'記録なし — 右上のボタンから追加',
+    fabSortToRating:'スコア順に切替', fabSortToTime:'時系列順に切替',
+    fabSearch:'ゲームを検索', fabLang:'言語切替', fabUpdate:'更新を確認',
+    searchPlaceholder:'ゲームタイトルを検索...', searchHint:'キーワードを入力して検索',
+    searchEmpty:'該当するゲームが見つかりません',
+    deleteConfirm:'この記録を削除しますか？', alertNoTitle:'タイトルを入力してください',
+    updateChecking:'更新を確認中', updateFound:'新バージョンを検出、更新中',
+    alreadyLatest:'最新バージョンです', updateError:'更新確認失敗、ネットワークを確認',
+    langModalTitle:'LANGUAGE',
+  },
+  en: {
+    btnAdd:'＋ ADD GAME', btnEdit:'EDIT', btnSave:'SAVE', btnCancel:'CANCEL',
+    btnDelete:'DELETE', formTitleNew:'ADD GAME', formTitleEdit:'EDIT GAME',
+    labelCover:'COVER IMAGE', labelTitle:'GAME TITLE *', labelRelease:'RELEASE DATE',
+    labelLogDate:'LOG DATE', labelPlatform:'PLATFORM', labelStatus:'STATUS',
+    labelRating:'MY RATING', labelReview:'REVIEW',
+    placeholderTitle:'Enter game title', placeholderReview:'Write your thoughts...',
+    coverHint:'JPG / PNG / WebP supported<br>or paste an image URL below↓', btnUploadImg:'UPLOAD IMAGE',
+    platNone:'Unspecified', platNintendo:'Nintendo', platSony:'Sony',
+    platMicrosoft:'Microsoft', platPC:'PC', platMobile:'Mobile',
+    statusPlaying:'Playing', statusClear:'Completed', statusAchieve:'All Achieve', statusDrop:'Dropped',
+    statusPlayingShort:'Playing', statusClearShort:'Clear', statusAchieveShort:'Achieve', statusDropShort:'Drop',
+    metaPlatform:'PLATFORM', metaRelease:'RELEASE', metaLogDate:'LOG DATE',
+    metaStatus:'STATUS', metaRating:'MY RATING', metaReviewSection:'REVIEW',
+    noReview:'No review yet', unrated:'Unrated', unknownYear:'Unknown',
+    emptyState:'No games yet — tap + to add one',
+    fabSortToRating:'Sort by Rating', fabSortToTime:'Sort by Date',
+    fabSearch:'Search Games', fabLang:'Language', fabUpdate:'Check Update',
+    searchPlaceholder:'Search game titles...', searchHint:'Type to search',
+    searchEmpty:'No games found',
+    deleteConfirm:'Delete this record?', alertNoTitle:'Please enter a game title',
+    updateChecking:'Checking for updates', updateFound:'New version found, updating',
+    alreadyLatest:'Already up to date', updateError:'Update check failed, check network',
+    langModalTitle:'LANGUAGE',
+  },
+};
+
+function t(key) {
+  return (I18N[currentLang] && I18N[currentLang][key]) || I18N['zh'][key] || key;
+}
+
 // ══════════ DATA ══════════
 const STORAGE_KEY = 'gamelog_v1';
+const APP_VERSION = '20260310_007';
 let games = [];
 let currentGameId = null;
 let formReturnView = 'main';
@@ -835,12 +922,11 @@ function showView(name) {
   document.getElementById('view-' + name).classList.add('active');
   window.scrollTo(0, 0);
   closeFab();
-  // FAB only on main view
   const fab = document.getElementById('fab-wrap');
   if (fab) fab.style.display = (name === 'main') ? 'flex' : 'none';
 }
 
-// ══════════ GALLERY ══════════
+// ══════════ STATUS / PLATFORM ══════════
 function getStatusMap() {
   return {
     clear:   { label: t('statusClearShort'),   cls: 'badge-clear' },
@@ -850,11 +936,9 @@ function getStatusMap() {
   };
 }
 
-// Flat SVG icons for each platform
 const PLATFORM_MAP = {
   nintendo: {
-    label: '任天堂',
-    color: '#E60012',
+    label: '任天堂', color: '#E60012',
     svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="1" y="4" width="7" height="12" rx="3.5" fill="#E60012"/>
       <rect x="12" y="4" width="7" height="12" rx="3.5" fill="#E60012"/>
@@ -864,8 +948,7 @@ const PLATFORM_MAP = {
     </svg>`
   },
   sony: {
-    label: '索尼',
-    color: '#003087',
+    label: '索尼', color: '#003087',
     svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="10" cy="10" r="9" fill="#003087"/>
       <circle cx="10" cy="6.5" r="2" fill="white"/>
@@ -876,8 +959,7 @@ const PLATFORM_MAP = {
     </svg>`
   },
   microsoft: {
-    label: '微软',
-    color: '#107C10',
+    label: '微软', color: '#107C10',
     svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="10" cy="10" r="9" fill="#107C10"/>
       <path d="M10 3.5 L16.5 10 L10 16.5 L3.5 10 Z" fill="none" stroke="white" stroke-width="1.8"/>
@@ -886,8 +968,7 @@ const PLATFORM_MAP = {
     </svg>`
   },
   pc: {
-    label: 'PC',
-    color: '#4a9eff',
+    label: 'PC', color: '#4a9eff',
     svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="2" y="3" width="16" height="11" rx="1.5" fill="#4a9eff"/>
       <rect x="3.5" y="4.5" width="13" height="8" rx="0.5" fill="#0e0e12"/>
@@ -896,8 +977,7 @@ const PLATFORM_MAP = {
     </svg>`
   },
   mobile: {
-    label: '手机',
-    color: '#aaaaaa',
+    label: '手机', color: '#aaaaaa',
     svg: `<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="5.5" y="1.5" width="9" height="17" rx="2" fill="#aaaaaa"/>
       <rect x="7" y="3" width="6" height="11" rx="0.5" fill="#0e0e12"/>
@@ -907,25 +987,25 @@ const PLATFORM_MAP = {
 };
 
 // ══════════ SORT & FAB ══════════
-let sortMode = 'time'; // 'time' | 'rating'
+let sortMode = 'time';
 
 function toggleSort() {
   sortMode = sortMode === 'time' ? 'rating' : 'time';
-  document.getElementById('sort-label').textContent =
-    sortMode === 'time' ? t('fabSortToRating') : t('fabSortToTime');
+  const lbl = document.getElementById('sort-label');
+  if (lbl) lbl.textContent = t(sortMode === 'time' ? 'fabSortToRating' : 'fabSortToTime');
   renderGallery();
   closeFab();
 }
 
 function toggleFab() {
-  const btn = document.getElementById('fab-btn');
-  const list = document.getElementById('fab-menu-list');
-  btn.classList.toggle('open');
-  list.classList.toggle('open');
+  document.getElementById('fab-btn').classList.toggle('open');
+  document.getElementById('fab-menu-list').classList.toggle('open');
 }
 function closeFab() {
-  document.getElementById('fab-btn').classList.remove('open');
-  document.getElementById('fab-menu-list').classList.remove('open');
+  const btn = document.getElementById('fab-btn');
+  const list = document.getElementById('fab-menu-list');
+  if (btn) btn.classList.remove('open');
+  if (list) list.classList.remove('open');
 }
 
 // ══════════ SEARCH ══════════
@@ -933,7 +1013,7 @@ function openSearch() {
   closeFab();
   document.getElementById('search-overlay').classList.add('open');
   document.getElementById('search-input').value = '';
-  document.getElementById('search-results').innerHTML = '<div class="search-empty">输入关键词开始搜索</div>';
+  document.getElementById('search-results').innerHTML = '<div class="search-empty">' + t('searchHint') + '</div>';
   setTimeout(() => document.getElementById('search-input').focus(), 100);
 }
 function closeSearch() {
@@ -945,21 +1025,15 @@ function handleSearchOverlayClick(e) {
 function onSearchInput(val) {
   const q = val.trim();
   const container = document.getElementById('search-results');
-  if (!q) {
-    container.innerHTML = '<div class="search-empty">输入关键词开始搜索</div>';
-    return;
-  }
+  if (!q) { container.innerHTML = '<div class="search-empty">' + t('searchHint') + '</div>'; return; }
   const lower = q.toLowerCase();
   const matched = games.filter(g => g.title.toLowerCase().includes(lower));
-  if (!matched.length) {
-    container.innerHTML = '<div class="search-empty">没有找到匹配的游戏</div>';
-    return;
-  }
+  if (!matched.length) { container.innerHTML = '<div class="search-empty">' + t('searchEmpty') + '</div>'; return; }
   container.innerHTML = matched.map(g => {
     const thumb = g.coverData
       ? `<div class="search-result-thumb"><img src="${g.coverData}" alt=""></div>`
       : `<div class="search-result-thumb">🎮</div>`;
-    const score = (g.rating != null && g.rating !== '') ? `★ ${g.rating}` : '';
+    const score = (g.rating != null && g.rating !== '') ? '★ ' + g.rating : '';
     return `<div class="search-result-item" onclick="searchGoTo('${g.id}')">
       ${thumb}
       <div class="search-result-title">${esc(g.title)}</div>
@@ -967,27 +1041,17 @@ function onSearchInput(val) {
     </div>`;
   }).join('');
 }
-function searchGoTo(id) {
-  closeSearch();
-  openDetail(id);
-}
+function searchGoTo(id) { closeSearch(); openDetail(id); }
 
 // ══════════ GALLERY ══════════
 function renderGallery() {
   const container = document.getElementById('gallery-container');
   if (!games.length) {
-    container.innerHTML = `<div class="empty-state">
-      <div class="big-icon">🕹️</div>
-      <p>${t('emptyState')}</p>
-    </div>`;
+    container.innerHTML = `<div class="empty-state"><div class="big-icon">🕹️</div><p>${t('emptyState')}</p></div>`;
     return;
   }
-
-  if (sortMode === 'rating') {
-    renderByRating(container);
-  } else {
-    renderByTime(container);
-  }
+  if (sortMode === 'rating') renderByRating(container);
+  else renderByTime(container);
 }
 
 function renderByTime(container) {
@@ -997,83 +1061,47 @@ function renderByTime(container) {
     if (!byYear[y]) byYear[y] = [];
     byYear[y].push(g);
   });
-  const years = Object.keys(byYear).sort((a,b) => b - a);
+  const years = Object.keys(byYear).sort((a,b) => b > a ? 1 : -1);
   container.innerHTML = years.map(year => {
-    const gs = byYear[year].sort((a,b) => {
-      const da = a.logDate || a.releaseDate || '';
-      const db = b.logDate || b.releaseDate || '';
-      return da < db ? -1 : 1;
-    });
-    return `<div class="year-section">
-      <div class="year-label">${year}</div>
-      <div class="games-grid">${gs.map(gameCard).join('')}</div>
-    </div>`;
+    const gs = byYear[year].sort((a,b) => (a.logDate||a.releaseDate||'') < (b.logDate||b.releaseDate||'') ? -1 : 1);
+    return `<div class="year-section"><div class="year-label">${year}</div><div class="games-grid">${gs.map(gameCard).join('')}</div></div>`;
   }).join('');
 }
 
 function renderByRating(container) {
-  // group by rating value (desc), unrated last
   const byScore = {};
   games.forEach(g => {
     const key = (g.rating != null && g.rating !== '') ? String(g.rating) : '__unrated__';
     if (!byScore[key]) byScore[key] = [];
     byScore[key].push(g);
   });
-  // sort keys: numeric desc, unrated at end
-  const keys = Object.keys(byScore).sort((a, b) => {
+  const keys = Object.keys(byScore).sort((a,b) => {
     if (a === '__unrated__') return 1;
     if (b === '__unrated__') return -1;
     return parseFloat(b) - parseFloat(a);
   });
   container.innerHTML = keys.map(key => {
-    const gs = byScore[key].sort((a,b) => {
-      const da = a.logDate || a.releaseDate || '';
-      const db = b.logDate || b.releaseDate || '';
-      return da < db ? -1 : 1;
-    });
+    const gs = byScore[key].sort((a,b) => (a.logDate||a.releaseDate||'') < (b.logDate||b.releaseDate||'') ? -1 : 1);
     const label = key === '__unrated__' ? t('unrated') : key;
-    return `<div class="score-section">
-      <div class="score-label">${label}</div>
-      <div class="games-grid">${gs.map(gameCard).join('')}</div>
-    </div>`;
+    return `<div class="score-section"><div class="score-label">${label}</div><div class="games-grid">${gs.map(gameCard).join('')}</div></div>`;
   }).join('');
 }
 
 function gameCard(g) {
   const st = getStatusMap()[g.status] || {};
-  const cover = g.coverData
-    ? `<img src="${g.coverData}" alt="${esc(g.title)}">`
-    : `<div class="placeholder-cover">🎮</div>`;
-
-  // Right badge: only show for non-achieve statuses (achieve gets trophy icon)
+  const cover = g.coverData ? `<img src="${g.coverData}" alt="${esc(g.title)}">` : `<div class="placeholder-cover">🎮</div>`;
   let badgeHtml = '';
   if (g.status === 'achieve') {
-    badgeHtml = `<div class="card-badge badge-achieve">
-      <svg viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" width="26" height="26">
-        <circle cx="13" cy="13" r="13" fill="#e8c84a"/>
-        <path d="M13 6 L14.8 11H20L15.6 14.2L17.4 19.2L13 16L8.6 19.2L10.4 14.2L6 11H11.2Z" fill="#7a5c00"/>
-      </svg>
-    </div>`;
+    badgeHtml = `<div class="card-badge badge-achieve"><svg viewBox="0 0 26 26" fill="none" width="26" height="26"><circle cx="13" cy="13" r="13" fill="#e8c84a"/><path d="M13 6 L14.8 11H20L15.6 14.2L17.4 19.2L13 16L8.6 19.2L10.4 14.2L6 11H11.2Z" fill="#7a5c00"/></svg></div>`;
   } else if (st.cls) {
     badgeHtml = `<div class="card-badge ${st.cls}">${st.label}</div>`;
   }
-
-  // Left platform icon
   const plat = PLATFORM_MAP[g.platform];
-  const platHtml = plat
-    ? `<div class="card-platform" style="background:rgba(0,0,0,0.55)">${plat.svg}</div>`
-    : '';
-
-  const ratingBadge = (g.rating != null && g.rating !== '')
-    ? `<div class="card-rating">${g.rating}</div>` : '';
+  const platHtml = plat ? `<div class="card-platform" style="background:rgba(0,0,0,0.55)">${plat.svg}</div>` : '';
+  const ratingBadge = (g.rating != null && g.rating !== '') ? `<div class="card-rating">${g.rating}</div>` : '';
   return `<div class="game-card" onclick="openDetail('${g.id}')">
-    ${cover}
-    ${platHtml}
-    ${badgeHtml}
-    ${ratingBadge}
-    <div class="card-overlay">
-      <div class="card-title">${esc(g.title)}</div>
-    </div>
+    ${cover}${platHtml}${badgeHtml}${ratingBadge}
+    <div class="card-overlay"><div class="card-title">${esc(g.title)}</div></div>
   </div>`;
 }
 
@@ -1082,19 +1110,14 @@ function openDetail(id) {
   currentGameId = id;
   const g = games.find(x => x.id === id);
   if (!g) return;
-
   document.getElementById('detail-header-title').textContent = g.title;
-
   const st = getStatusMap()[g.status] || {};
   const stColor = g.status === 'clear' ? 'var(--accent)' : g.status === 'achieve' ? '#e8c84a' : g.status === 'playing' ? '#00cfff' : 'var(--text-muted)';
-  const cover = g.coverData
-    ? `<img src="${g.coverData}" alt="${esc(g.title)}">`
-    : `<div class="placeholder-cover">🎮</div>`;
-
+  const cover = g.coverData ? `<img src="${g.coverData}" alt="${esc(g.title)}">` : `<div class="placeholder-cover">🎮</div>`;
   const ratingHtml = (g.rating != null && g.rating !== '')
     ? `<div class="rating-display"><span class="rating-num">${g.rating}</span><span class="rating-max">/ 10</span></div>`
-    : '<span style="color:var(--text-dim)">' + t('unrated') + '</span>';
-
+    : `<span style="color:var(--text-dim)">${t('unrated')}</span>`;
+  const plat = PLATFORM_MAP[g.platform];
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-hero">
       <div class="detail-cover">${cover}</div>
@@ -1104,7 +1127,7 @@ function openDetail(id) {
           <div class="meta-item">
             <div class="meta-label">${t('metaPlatform')}</div>
             <div class="meta-value" style="display:flex;align-items:center;gap:8px">
-              ${PLATFORM_MAP[g.platform] ? `<span style="display:inline-flex;width:20px;height:20px">${PLATFORM_MAP[g.platform].svg}</span>${PLATFORM_MAP[g.platform].label}` : '—'}
+              ${plat ? `<span style="display:inline-flex;width:20px;height:20px">${plat.svg}</span>${plat.label}` : '—'}
             </div>
           </div>
           <div class="meta-item">
@@ -1118,7 +1141,7 @@ function openDetail(id) {
           <div class="meta-item">
             <div class="meta-label">${t('metaStatus')}</div>
             <div class="meta-value">
-              <span class="status-chip" style="background:${stColor};color:${g.status === 'drop' ? 'var(--text)' : 'var(--bg)'}">${st.label||'—'}</span>
+              <span class="status-chip" style="background:${stColor};color:${g.status==='drop'?'var(--text)':'var(--bg)'}">${st.label||'—'}</span>
             </div>
           </div>
           <div class="meta-item meta-item-full">
@@ -1130,11 +1153,8 @@ function openDetail(id) {
     </div>
     <div class="detail-review">
       <div class="section-label">${t('metaReviewSection')}</div>
-      ${g.review
-        ? `<div class="review-text">${esc(g.review)}</div>`
-        : `<div class="review-empty">${t('noReview')}</div>`}
+      ${g.review ? `<div class="review-text">${esc(g.review)}</div>` : `<div class="review-empty">${t('noReview')}</div>`}
     </div>`;
-
   showView('detail');
 }
 
@@ -1145,7 +1165,6 @@ function openForm(id) {
   formReturnView = id ? 'detail' : 'main';
   document.getElementById('form-back-btn').onclick = () => showView(formReturnView);
   document.getElementById('form-cancel-btn').onclick = () => showView(formReturnView);
-
   if (id) {
     const g = games.find(x => x.id === id);
     document.getElementById('form-title').textContent = t('formTitleEdit');
@@ -1158,13 +1177,7 @@ function openForm(id) {
     document.getElementById('f-review').value = g.review || '';
     document.getElementById('f-cover-url').value = '';
     document.getElementById('f-cover-data').value = g.coverData || '';
-
-    if (g.coverData) {
-      document.getElementById('cover-preview').innerHTML = `<img src="${g.coverData}" alt="">`;
-    } else {
-      document.getElementById('cover-preview').innerHTML = '🎮';
-    }
-
+    document.getElementById('cover-preview').innerHTML = g.coverData ? `<img src="${g.coverData}" alt="">` : '🎮';
     if (g.rating != null && g.rating !== '') {
       ratingUnset = false;
       document.getElementById('f-rating').value = g.rating;
@@ -1194,7 +1207,7 @@ function openForm(id) {
     document.getElementById('rating-label').textContent = '—';
     document.getElementById('form-delete-btn').style.display = 'none';
   }
-
+  applyLang();
   showView('form');
 }
 
@@ -1204,9 +1217,13 @@ function updateRatingLabel(val) {
   document.getElementById('rating-label').textContent = val + ' / 10';
 }
 
-// clicking slider always sets it
-document.getElementById('f-rating').addEventListener('mousedown', () => { ratingUnset = false; });
-document.getElementById('f-rating').addEventListener('touchstart', () => { ratingUnset = false; });
+document.addEventListener('DOMContentLoaded', function() {
+  const fr = document.getElementById('f-rating');
+  if (fr) {
+    fr.addEventListener('mousedown', () => { ratingUnset = false; });
+    fr.addEventListener('touchstart', () => { ratingUnset = false; });
+  }
+});
 
 function handleCoverFile(input) {
   const file = input.files[0];
@@ -1222,12 +1239,7 @@ function handleCoverFile(input) {
 }
 
 function previewUrl(url) {
-  if (!url) {
-    document.getElementById('cover-preview').innerHTML = '🎮';
-    document.getElementById('f-cover-data').value = '';
-    return;
-  }
-  // store url as data (we'll use it directly)
+  if (!url) { document.getElementById('cover-preview').innerHTML = '🎮'; document.getElementById('f-cover-data').value = ''; return; }
   document.getElementById('f-cover-data').value = url;
   document.getElementById('cover-preview').innerHTML = `<img src="${url}" alt="" onerror="this.parentElement.innerHTML='❌'">`;
 }
@@ -1235,13 +1247,10 @@ function previewUrl(url) {
 function saveGame() {
   const title = document.getElementById('f-title').value.trim();
   if (!title) { alert(t('alertNoTitle')); return; }
-
   const id = document.getElementById('f-id').value || genId();
   const rating = ratingUnset ? '' : document.getElementById('f-rating').value;
-
   const g = {
-    id,
-    title,
+    id, title,
     releaseDate: document.getElementById('f-release').value,
     logDate: document.getElementById('f-log-date').value,
     status: document.getElementById('f-status').value,
@@ -1250,7 +1259,6 @@ function saveGame() {
     review: document.getElementById('f-review').value.trim(),
     coverData: document.getElementById('f-cover-data').value,
   };
-
   const idx = games.findIndex(x => x.id === id);
   if (idx >= 0) games[idx] = g; else games.push(g);
   saveGames();
@@ -1272,9 +1280,108 @@ function esc(str) {
   return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ══════════ AUTO UPDATE ══════════
-const APP_VERSION = '20260310_006';
-const VERSION_STORAGE_KEY = 'gamelog_version';
+// ══════════ LANGUAGE ══════════
+function applyLang() {
+  // Update platform map labels
+  PLATFORM_MAP.nintendo.label = t('platNintendo');
+  PLATFORM_MAP.sony.label     = t('platSony');
+  PLATFORM_MAP.microsoft.label= t('platMicrosoft');
+  PLATFORM_MAP.pc.label       = t('platPC');
+  PLATFORM_MAP.mobile.label   = t('platMobile');
+
+  // Header buttons
+  const btnAdd = document.getElementById('btn-add'); if (btnAdd) btnAdd.textContent = t('btnAdd');
+  const btnEdit = document.querySelector('.btn-edit'); if (btnEdit) btnEdit.textContent = t('btnEdit');
+  const btnSave = document.querySelector('.btn-save'); if (btnSave) btnSave.textContent = t('btnSave');
+  const fcb = document.getElementById('form-cancel-btn'); if (fcb) fcb.textContent = t('btnCancel');
+  const fdb = document.getElementById('form-delete-btn'); if (fdb) fdb.textContent = t('btnDelete');
+
+  // Form labels by ID
+  const lblMap = { 'lbl-cover':'labelCover','lbl-title':'labelTitle','lbl-release':'labelRelease',
+    'lbl-logdate':'labelLogDate','lbl-platform':'labelPlatform','lbl-status':'labelStatus','lbl-review':'labelReview' };
+  Object.entries(lblMap).forEach(([id,key]) => { const el=document.getElementById(id); if(el) el.textContent=t(key); });
+  const ratingLbl = document.getElementById('lbl-rating');
+  if (ratingLbl) {
+    const cur = document.getElementById('rating-label') ? document.getElementById('rating-label').textContent : '—';
+    ratingLbl.innerHTML = t('labelRating') + ' — <span id="rating-label">' + cur + '</span>';
+  }
+
+  // Form placeholders
+  const ti = document.getElementById('f-title'); if (ti) ti.placeholder = t('placeholderTitle');
+  const rv = document.getElementById('f-review'); if (rv) rv.placeholder = t('placeholderReview');
+  const hint = document.querySelector('.cover-hint'); if (hint) hint.innerHTML = t('coverHint');
+  const uploadBtn = document.querySelector('[onclick*="f-cover-file"]'); if (uploadBtn) uploadBtn.textContent = t('btnUploadImg');
+
+  // Platform options
+  const ps = document.getElementById('f-platform');
+  if (ps) { ps.options[0].text=t('platNone'); ps.options[1].text=t('platNintendo'); ps.options[2].text=t('platSony'); ps.options[3].text=t('platMicrosoft'); ps.options[4].text=t('platPC'); ps.options[5].text=t('platMobile'); }
+
+  // Status options
+  const ss = document.getElementById('f-status');
+  if (ss) { ss.options[0].text=t('statusPlaying'); ss.options[1].text=t('statusClear'); ss.options[2].text=t('statusAchieve'); ss.options[3].text=t('statusDrop'); }
+
+  // FAB labels
+  const sortLbl = document.getElementById('sort-label');
+  if (sortLbl) sortLbl.textContent = t(sortMode === 'time' ? 'fabSortToRating' : 'fabSortToTime');
+  const fl = document.getElementById('fab-lang-label'); if (fl) fl.textContent = t('fabLang');
+  const fu = document.getElementById('fab-update-label'); if (fu) fu.textContent = t('fabUpdate');
+  const fs = document.getElementById('fab-search-label'); if (fs) fs.textContent = t('fabSearch');
+
+  // Search
+  const si = document.getElementById('search-input'); if (si) si.placeholder = t('searchPlaceholder');
+
+  // Lang modal active state
+  ['zh','ja','en'].forEach(l => {
+    const el = document.getElementById('lang-opt-' + l);
+    if (el) el.classList.toggle('active', l === currentLang);
+  });
+}
+
+function setLang(lang) {
+  closeLangModal();
+  if (lang === currentLang) return;
+  currentLang = lang;
+  localStorage.setItem(LANG_KEY, lang);
+  applyLang();
+  renderGallery();
+  if (document.getElementById('view-detail').classList.contains('active') && currentGameId) {
+    openDetail(currentGameId);
+  }
+}
+
+function openLangModal() {
+  closeFab();
+  ['zh','ja','en'].forEach(l => { const el=document.getElementById('lang-opt-'+l); if(el) el.classList.toggle('active', l===currentLang); });
+  document.getElementById('lang-overlay').classList.add('open');
+}
+function closeLangModal() { document.getElementById('lang-overlay').classList.remove('open'); }
+function handleLangOverlayClick(e) { if (e.target === document.getElementById('lang-overlay')) closeLangModal(); }
+
+// ══════════ UPDATE ══════════
+let toastTimer = null;
+
+function showUpdateToast(state, remoteVer) {
+  const toast = document.getElementById('update-toast');
+  if (!toast) return;
+  if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+  if (state === 'checking') {
+    toast.style.borderColor = 'var(--text-muted)'; toast.style.color = 'var(--text-muted)';
+    toast.textContent = '⟳ ' + t('updateChecking') + '...';
+  } else if (state === 'latest') {
+    toast.style.borderColor = 'var(--text-muted)'; toast.style.color = 'var(--text)';
+    toast.textContent = '✓ ' + t('alreadyLatest') + '  [v' + APP_VERSION + ']';
+  } else if (state === 'found') {
+    toast.style.borderColor = 'var(--accent)'; toast.style.color = 'var(--accent)';
+    toast.textContent = '⟳ ' + t('updateFound') + '  ' + APP_VERSION + ' → ' + remoteVer;
+  } else if (state === 'error') {
+    toast.style.borderColor = 'var(--accent2)'; toast.style.color = 'var(--accent2)';
+    toast.textContent = '✕ ' + t('updateError');
+  }
+  toast.style.display = 'block';
+  if (state !== 'found') {
+    toastTimer = setTimeout(() => { toast.style.display='none'; toast.style.borderColor=''; toast.style.color=''; }, 3000);
+  }
+}
 
 function checkForUpdate() {
   const baseUrl = window.location.href.split('?')[0].split('#')[0];
@@ -1289,23 +1396,19 @@ function checkForUpdate() {
     const remote = match[1];
     if (remote !== APP_VERSION) {
       showUpdateToast('found', remote);
-      setTimeout(() => {
-        window.location.href = baseUrl + '?v=' + remote + '&t=' + Date.now();
-      }, 1800);
+      setTimeout(() => { window.location.href = baseUrl + '?v=' + remote + '&t=' + Date.now(); }, 1800);
     }
   };
-  xhr.onerror = function() {}; // silently ignore offline
+  xhr.onerror = function() {};
   xhr.send();
 }
 
 function manualCheckUpdate() {
   closeFab();
   showUpdateToast('checking');
-  const base = window.location.href.split('?')[0].split('#')[0];
-  const url = base + '?bust=' + Date.now();
-  // Use XMLHttpRequest — more reliable in iOS PWA than fetch
+  const baseUrl = window.location.href.split('?')[0].split('#')[0];
   const xhr = new XMLHttpRequest();
-  xhr.open('GET', url, true);
+  xhr.open('GET', baseUrl + '?bust=' + Date.now(), true);
   xhr.setRequestHeader('Cache-Control', 'no-cache');
   xhr.setRequestHeader('Pragma', 'no-cache');
   xhr.timeout = 8000;
@@ -1314,393 +1417,20 @@ function manualCheckUpdate() {
       const match = xhr.responseText.match(/APP_VERSION = '([^']+)'/);
       if (!match) { showUpdateToast('error'); return; }
       const remote = match[1];
-      if (remote === APP_VERSION) {
-        showUpdateToast('latest');
-      } else {
-        showUpdateToast('found', remote);
-        setTimeout(() => {
-          window.location.href = base + '?v=' + remote + '&t=' + Date.now();
-        }, 2200);
-      }
-    } else {
-      showUpdateToast('error');
-    }
+      if (remote === APP_VERSION) { showUpdateToast('latest'); }
+      else { showUpdateToast('found', remote); setTimeout(() => { window.location.href = baseUrl + '?v=' + remote + '&t=' + Date.now(); }, 2200); }
+    } else { showUpdateToast('error'); }
   };
   xhr.onerror = function() { showUpdateToast('error'); };
   xhr.ontimeout = function() { showUpdateToast('error'); };
   xhr.send();
 }
 
-let toastTimer = null;
-function showUpdateToast(state, remoteVer) {
-  const toast = document.getElementById('update-toast');
-  if (!toast) return;
-  if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
-
-  if (state === 'checking') {
-    toast.style.borderColor = 'var(--text-muted)';
-    toast.style.color = 'var(--text-muted)';
-    toast.textContent = '⟳ ' + t('updateChecking') + '...';
-  } else if (state === 'latest') {
-    toast.style.borderColor = 'var(--text-muted)';
-    toast.style.color = 'var(--text)';
-    toast.textContent = '✓ ' + t('alreadyLatest') + '  [v' + APP_VERSION + ']';
-  } else if (state === 'found') {
-    toast.style.borderColor = 'var(--accent)';
-    toast.style.color = 'var(--accent)';
-    toast.textContent = '⟳ ' + t('updateFound') + '  v' + APP_VERSION + ' → v' + remoteVer;
-  } else if (state === 'error') {
-    toast.style.borderColor = 'var(--accent2)';
-    toast.style.color = 'var(--accent2)';
-    toast.textContent = '✕ ' + t('updateError');
-  }
-
-  toast.style.display = 'block';
-
-  if (state !== 'found') {
-    toastTimer = setTimeout(() => {
-      toast.style.display = 'none';
-      toast.style.borderColor = '';
-      toast.style.color = '';
-    }, 3000);
-  }
-}
-
-// ══════════ I18N ══════════
-const LANG_KEY = 'gamelog_lang';
-let currentLang = localStorage.getItem(LANG_KEY) || 'zh';
-
-const I18N = {
-  zh: {
-    appTitle:        'GAME LOG',
-    btnAdd:          '＋ 新增游戏',
-    btnEdit:         '编辑',
-    btnSave:         '保存',
-    btnCancel:       '取消',
-    btnDelete:       '删除记录',
-    btnBack:         '← BACK',
-    formTitleNew:    '新增游戏',
-    formTitleEdit:   '编辑游戏',
-    labelCover:      '游戏封面',
-    labelTitle:      '游戏标题 *',
-    labelRelease:    t('metaRelease'),
-    labelLogDate:    '我的记录时间',
-    labelPlatform:   t('metaPlatform'),
-    labelStatus:     t('metaStatus'),
-    labelRating:     t('metaRating'),
-    labelReview:     '短评',
-    placeholderTitle:'输入游戏名称',
-    placeholderReview:'写下你的感受...',
-    coverHint:       '支持 JPG / PNG / WebP<br>也可以填入图片网址↓',
-    btnUploadImg:    '上传图片',
-    platNone:        '不指定',
-    platNintendo:    '任天堂',
-    platSony:        '索尼',
-    platMicrosoft:   '微软',
-    platPC:          'PC',
-    platMobile:      '手机',
-    statusPlaying:   '游玩中',
-    statusClear:     '已通关',
-    statusAchieve:   '全成就',
-    statusDrop:      '放弃了',
-    statusPlayingShort: '游玩中',
-    statusClearShort:   '通关',
-    statusAchieveShort: '全成就',
-    statusDropShort:    '放弃',
-    metaPlatform:    t('metaPlatform'),
-    metaRelease:     t('metaRelease'),
-    metaLogDate:     t('metaLogDate'),
-    metaStatus:      t('metaStatus'),
-    metaRating:      t('metaRating'),
-    metaReviewSection:'短评',
-    noReview:        t('noReview'),
-    noRating:        t('unrated'),
-    unrated:         t('unrated'),
-    unknownYear:     t('unknownYear'),
-    emptyState:      '还没有记录 — 点击右上角新增游戏',
-    fabSortToRating: t('fabSortToRating'),
-    fabSortToTime:   t('fabSortToTime'),
-    fabSearch:       '搜索游戏',
-    fabLang:         '切换语言',
-    fabUpdate:       '检查更新',
-    searchPlaceholder:'搜索游戏标题...',
-    searchHint:      '输入关键词开始搜索',
-    searchEmpty:     '没有找到匹配的游戏',
-    deleteConfirm:   t('deleteConfirm'),
-    alertNoTitle:    t('alertNoTitle'),
-    updateToast:     '⟳ 发现新版本，正在更新…',
-    alreadyLatest:   '✓ 已是最新版本',
-    updateChecking:  '正在检查更新',
-    updateFound:     '发现新版本，正在更新',
-    updateError:     '检查更新失败，请检查网络',
-    langModalTitle:  'LANGUAGE',
-  },
-  ja: {
-    appTitle:        'GAME LOG',
-    btnAdd:          '＋ ゲームを追加',
-    btnEdit:         '編集',
-    btnSave:         '保存',
-    btnCancel:       'キャンセル',
-    btnDelete:       '記録を削除',
-    btnBack:         '← BACK',
-    formTitleNew:    'ゲームを追加',
-    formTitleEdit:   'ゲームを編集',
-    labelCover:      'カバー画像',
-    labelTitle:      'ゲームタイトル *',
-    labelRelease:    '発売日',
-    labelLogDate:    '記録日',
-    labelPlatform:   'プラットフォーム',
-    labelStatus:     '進捗状況',
-    labelRating:     'マイスコア',
-    labelReview:     'レビュー',
-    placeholderTitle:'タイトルを入力',
-    placeholderReview:'感想を書いてください...',
-    coverHint:       'JPG / PNG / WebP 対応<br>または画像URLを入力↓',
-    btnUploadImg:    '画像をアップロード',
-    platNone:        '指定なし',
-    platNintendo:    '任天堂',
-    platSony:        'ソニー',
-    platMicrosoft:   'マイクロソフト',
-    platPC:          'PC',
-    platMobile:      'スマホ',
-    statusPlaying:   'プレイ中',
-    statusClear:     'クリア済み',
-    statusAchieve:   '全実績',
-    statusDrop:      'ドロップ',
-    statusPlayingShort: 'プレイ中',
-    statusClearShort:   'クリア',
-    statusAchieveShort: '全実績',
-    statusDropShort:    'ドロップ',
-    metaPlatform:    'プラットフォーム',
-    metaRelease:     '発売日',
-    metaLogDate:     '記録日',
-    metaStatus:      '進捗状況',
-    metaRating:      'マイスコア',
-    metaReviewSection:'レビュー',
-    noReview:        'レビューなし',
-    noRating:        '未評価',
-    unrated:         '未評価',
-    unknownYear:     '不明',
-    emptyState:      '記録なし — 右上のボタンから追加',
-    fabSortToRating: 'スコア順に切替',
-    fabSortToTime:   '時系列順に切替',
-    fabSearch:       'ゲームを検索',
-    fabLang:         '言語切替',
-    fabUpdate:       '更新を確認',
-    searchPlaceholder:'ゲームタイトルを検索...',
-    searchHint:      'キーワードを入力して検索',
-    searchEmpty:     '該当するゲームが見つかりません',
-    deleteConfirm:   'この記録を削除しますか？',
-    alertNoTitle:    'タイトルを入力してください',
-    updateToast:     '⟳ 新バージョンを検出、更新中…',
-    alreadyLatest:   '✓ 最新バージョンです',
-    updateChecking:  '更新を確認中',
-    updateFound:     '新バージョンを検出、更新中',
-    updateError:     '更新確認失敗、ネットワークを確認',
-    langModalTitle:  'LANGUAGE',
-  },
-  en: {
-    appTitle:        'GAME LOG',
-    btnAdd:          '＋ ADD GAME',
-    btnEdit:         'EDIT',
-    btnSave:         'SAVE',
-    btnCancel:       'CANCEL',
-    btnDelete:       'DELETE',
-    btnBack:         '← BACK',
-    formTitleNew:    'ADD GAME',
-    formTitleEdit:   'EDIT GAME',
-    labelCover:      'COVER IMAGE',
-    labelTitle:      'GAME TITLE *',
-    labelRelease:    'RELEASE DATE',
-    labelLogDate:    'LOG DATE',
-    labelPlatform:   'PLATFORM',
-    labelStatus:     'STATUS',
-    labelRating:     'MY RATING',
-    labelReview:     'REVIEW',
-    placeholderTitle:'Enter game title',
-    placeholderReview:'Write your thoughts...',
-    coverHint:       'JPG / PNG / WebP supported<br>or paste an image URL below↓',
-    btnUploadImg:    'UPLOAD IMAGE',
-    platNone:        'Unspecified',
-    platNintendo:    'Nintendo',
-    platSony:        'Sony',
-    platMicrosoft:   'Microsoft',
-    platPC:          'PC',
-    platMobile:      'Mobile',
-    statusPlaying:   'Playing',
-    statusClear:     'Completed',
-    statusAchieve:   'All Achieve',
-    statusDrop:      'Dropped',
-    statusPlayingShort: 'Playing',
-    statusClearShort:   'Clear',
-    statusAchieveShort: 'Achieve',
-    statusDropShort:    'Drop',
-    metaPlatform:    'PLATFORM',
-    metaRelease:     'RELEASE',
-    metaLogDate:     'LOG DATE',
-    metaStatus:      'STATUS',
-    metaRating:      'MY RATING',
-    metaReviewSection:'REVIEW',
-    noReview:        'No review yet',
-    noRating:        'Unrated',
-    unrated:         'Unrated',
-    unknownYear:     'Unknown',
-    emptyState:      'No games yet — tap + to add one',
-    fabSortToRating: 'Sort by Rating',
-    fabSortToTime:   'Sort by Date',
-    fabSearch:       'Search Games',
-    fabLang:         'Language',
-    fabUpdate:       'Check Update',
-    searchPlaceholder:'Search game titles...',
-    searchHint:      'Type to search',
-    searchEmpty:     'No games found',
-    deleteConfirm:   'Delete this record?',
-    alertNoTitle:    'Please enter a game title',
-    updateToast:     '⟳ New version found, updating…',
-    alreadyLatest:   '✓ Already up to date',
-    updateChecking:  'Checking for updates',
-    updateFound:     'New version found, updating',
-    updateError:     'Update check failed, check network',
-    langModalTitle:  'LANGUAGE',
-  },
-};
-
-function t(key) {
-  return (I18N[currentLang] && I18N[currentLang][key]) || I18N['zh'][key] || key;
-}
-
-function applyLang() {
-  // Static DOM elements
-  const btnAdd = document.getElementById('btn-add'); if(btnAdd) btnAdd.textContent = t('btnAdd');
-  const btnEdit = document.querySelector('.btn-edit'); if(btnEdit) btnEdit.textContent = t('btnEdit');
-  const fcb = document.getElementById('form-cancel-btn'); if(fcb) fcb.textContent = t('btnCancel');
-  const fdb = document.getElementById('form-delete-btn'); if(fdb) fdb.textContent = t('btnDelete');
-  const btnSave = document.querySelector('.btn-save'); if(btnSave) btnSave.textContent = t('btnSave');
-
-  // Form labels - use data attributes for reliability
-  const labelMap = {
-    'lbl-cover': 'labelCover', 'lbl-title': 'labelTitle',
-    'lbl-release': 'labelRelease', 'lbl-logdate': 'labelLogDate',
-    'lbl-platform': 'labelPlatform', 'lbl-status': 'labelStatus',
-    'lbl-review': 'labelReview'
-  };
-  Object.entries(labelMap).forEach(([id, key]) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = t(key);
-  });
-  // Rating label has a span inside
-  const ratingLbl = document.getElementById('lbl-rating');
-  if (ratingLbl) {
-    const cur = document.getElementById('rating-label') ? document.getElementById('rating-label').textContent : '—';
-    ratingLbl.innerHTML = t('labelRating') + ' — <span id="rating-label">' + cur + '</span>';
-  }
-
-  // Platform options
-  const platSel = document.getElementById('f-platform');
-  if (platSel) {
-    platSel.options[0].text = t('platNone');
-    platSel.options[1].text = t('platNintendo');
-    platSel.options[2].text = t('platSony');
-    platSel.options[3].text = t('platMicrosoft');
-    platSel.options[4].text = t('platPC');
-    platSel.options[5].text = t('platMobile');
-  }
-
-  // Status options
-  const statSel = document.getElementById('f-status');
-  if (statSel) {
-    statSel.options[0].text = t('statusPlaying');
-    statSel.options[1].text = t('statusClear');
-    statSel.options[2].text = t('statusAchieve');
-    statSel.options[3].text = t('statusDrop');
-  }
-
-  // Input placeholders
-  const titleInput = document.getElementById('f-title');
-  if (titleInput) titleInput.placeholder = t('placeholderTitle');
-  const reviewInput = document.getElementById('f-review');
-  if (reviewInput) reviewInput.placeholder = t('placeholderReview');
-
-  // Cover hint
-  const hint = document.querySelector('.cover-hint');
-  if (hint) hint.innerHTML = t('coverHint');
-  const uploadBtn = document.querySelector('.btn-cancel[onclick*="f-cover-file"]');
-  if (uploadBtn) uploadBtn.textContent = t('btnUploadImg');
-
-  // FAB labels
-  const sortLabel = document.getElementById('sort-label');
-  if (sortLabel) sortLabel.textContent = sortMode === 'time' ? t('fabSortToRating') : t('fabSortToTime');
-  const fabLangLabel = document.getElementById('fab-lang-label');
-  if (fabLangLabel) fabLangLabel.textContent = t('fabLang');
-  const fabUpdateLabel = document.getElementById('fab-update-label');
-  if (fabUpdateLabel) fabUpdateLabel.textContent = t('fabUpdate');
-  const fabSearchLabel = document.getElementById('fab-search-label');
-  if (fabSearchLabel) fabSearchLabel.textContent = t('fabSearch');
-
-  // Search placeholder
-  const searchInput = document.getElementById('search-input');
-  if (searchInput) searchInput.placeholder = t('searchPlaceholder');
-
-  // Update toast
-  const toast = document.getElementById('update-toast');
-  if (toast && !toast.classList.contains('show')) toast.textContent = t('updateToast');
-
-  // Lang modal title
-  const langModalTitle = document.getElementById('lang-modal-title');
-  if (langModalTitle) langModalTitle.textContent = t('langModalTitle');
-
-  // Update active state in lang modal
-  ['zh','ja','en'].forEach(l => {
-    const el = document.getElementById('lang-opt-' + l);
-    if (el) el.classList.toggle('active', l === currentLang);
-  });
-
-  // PLATFORM_MAP labels (dynamic - update in map)
-  PLATFORM_MAP.nintendo.label = t('platNintendo');
-  PLATFORM_MAP.sony.label     = t('platSony');
-  PLATFORM_MAP.microsoft.label= t('platMicrosoft');
-  PLATFORM_MAP.pc.label       = t('platPC');
-  PLATFORM_MAP.mobile.label   = t('platMobile');
-
-  // Note: caller is responsible for re-rendering gallery if needed
-}
-
-function setLang(lang) {
-  closeLangModal();
-  if (lang === currentLang) return;
-  currentLang = lang;
-  localStorage.setItem(LANG_KEY, lang);
-  // Update all static DOM text directly
-  applyLang();
-  // Re-render dynamic content
-  renderGallery();
-  if (document.getElementById('view-detail').classList.contains('active') && currentGameId) {
-    openDetail(currentGameId);
-  }
-}
-
-function openLangModal() {
-  closeFab();
-  ['zh','ja','en'].forEach(l => {
-    const el = document.getElementById('lang-opt-' + l);
-    if (el) el.classList.toggle('active', l === currentLang);
-  });
-  document.getElementById('lang-overlay').classList.add('open');
-}
-function closeLangModal() {
-  document.getElementById('lang-overlay').classList.remove('open');
-}
-function handleLangOverlayClick(e) {
-  if (e.target === document.getElementById('lang-overlay')) closeLangModal();
-}
-
 // ══════════ INIT ══════════
-document.addEventListener('DOMContentLoaded', function() {
-  loadGames();
-  renderGallery(); // render first so FAB/empty-state appear immediately
-  applyLang();     // then apply language (updates text labels only)
-  checkForUpdate();
-});
+loadGames();
+applyLang();
+renderGallery();
+checkForUpdate();
 </script>
 
 <!-- ══════════════ FAB MENU (main view only) ══════════════ -->
