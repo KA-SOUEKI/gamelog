@@ -837,7 +837,7 @@ function showView(name) {
   closeFab();
   // FAB only on main view
   const fab = document.getElementById('fab-wrap');
-  if (fab) fab.style.display = (name === 'main' && games.length) ? 'flex' : 'none';
+  if (fab) fab.style.display = (name === 'main') ? 'flex' : 'none';
 }
 
 // ══════════ GALLERY ══════════
@@ -975,17 +975,13 @@ function searchGoTo(id) {
 // ══════════ GALLERY ══════════
 function renderGallery() {
   const container = document.getElementById('gallery-container');
-  const fab = document.getElementById('fab-wrap');
-
   if (!games.length) {
     container.innerHTML = `<div class="empty-state">
       <div class="big-icon">🕹️</div>
-      <p>还没有记录 — 点击右上角新增游戏</p>
+      <p>${t('emptyState')}</p>
     </div>`;
-    fab.style.display = 'none';
     return;
   }
-  fab.style.display = 'flex';
 
   if (sortMode === 'rating') {
     renderByRating(container);
@@ -1277,26 +1273,70 @@ function esc(str) {
 }
 
 // ══════════ AUTO UPDATE ══════════
-const APP_VERSION = '20260310_002';
+const APP_VERSION = '20260310_003';
+const VERSION_STORAGE_KEY = 'gamelog_version';
 
 async function checkForUpdate() {
   try {
-    const url = window.location.href.split('?')[0] + '?_=' + Date.now();
-    const res = await fetch(url, { cache: 'no-store' });
+    // Step 1: check if we just reloaded for an update
+    const pendingVersion = sessionStorage.getItem('gamelog_pending_version');
+    if (pendingVersion) {
+      sessionStorage.removeItem('gamelog_pending_version');
+      localStorage.setItem(VERSION_STORAGE_KEY, pendingVersion);
+      return; // just updated, no need to check again
+    }
+
+    // Step 2: fetch the remote file bypassing all caches
+    const baseUrl = window.location.href.split('?')[0].split('#')[0];
+    const fetchUrl = baseUrl + '?bust=' + Date.now();
+    const res = await fetch(fetchUrl, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }
+    });
     if (!res.ok) return;
     const html = await res.text();
+
+    // Step 3: extract version from fetched HTML
     const match = html.match(/APP_VERSION = '([^']+)'/);
-    if (match && match[1] && match[1] !== APP_VERSION) {
+    if (!match || !match[1]) return;
+    const remoteVersion = match[1];
+
+    // Step 4: compare with current running version
+    if (remoteVersion !== APP_VERSION) {
+      // Store the new version so after reload we know we're updated
+      sessionStorage.setItem('gamelog_pending_version', remoteVersion);
+      // Show toast then hard reload with cache-busting URL
       const toast = document.getElementById('update-toast');
-      toast.classList.add('show');
+      if (toast) {
+        toast.textContent = t('updateToast');
+        toast.classList.add('show');
+      }
       setTimeout(() => {
-        // Force reload bypassing cache
-        window.location.replace(window.location.href.split('?')[0] + '?_=' + Date.now());
+        window.location.href = baseUrl + '?v=' + remoteVersion + '&t=' + Date.now();
       }, 1800);
     }
   } catch(e) {
     // offline or network error — silently ignore
   }
+}
+
+function manualCheckUpdate() {
+  closeFab();
+  checkForUpdate().then(() => {
+    setTimeout(() => {
+      const toast = document.getElementById('update-toast');
+      if (toast && !toast.classList.contains('show')) {
+        toast.textContent = t('alreadyLatest');
+        toast.style.borderColor = 'var(--text-muted)';
+        toast.classList.add('show');
+        setTimeout(() => {
+          toast.classList.remove('show');
+          setTimeout(() => { toast.style.borderColor = ''; }, 300);
+        }, 2000);
+      }
+    }, 3000);
+  });
 }
 
 // ══════════ I18N ══════════
@@ -1355,12 +1395,14 @@ const I18N = {
     fabSortToTime:   t('fabSortToTime'),
     fabSearch:       '搜索游戏',
     fabLang:         '切换语言',
+    fabUpdate:       '检查更新',
     searchPlaceholder:'搜索游戏标题...',
     searchHint:      '输入关键词开始搜索',
     searchEmpty:     '没有找到匹配的游戏',
     deleteConfirm:   t('deleteConfirm'),
     alertNoTitle:    t('alertNoTitle'),
     updateToast:     '⟳ 发现新版本，正在更新…',
+    alreadyLatest:   '✓ 已是最新版本',
     langModalTitle:  'LANGUAGE',
   },
   ja: {
@@ -1414,12 +1456,14 @@ const I18N = {
     fabSortToTime:   '時系列順に切替',
     fabSearch:       'ゲームを検索',
     fabLang:         '言語切替',
+    fabUpdate:       '更新を確認',
     searchPlaceholder:'ゲームタイトルを検索...',
     searchHint:      'キーワードを入力して検索',
     searchEmpty:     '該当するゲームが見つかりません',
     deleteConfirm:   'この記録を削除しますか？',
     alertNoTitle:    'タイトルを入力してください',
     updateToast:     '⟳ 新バージョンを検出、更新中…',
+    alreadyLatest:   '✓ 最新バージョンです',
     langModalTitle:  'LANGUAGE',
   },
   en: {
@@ -1473,12 +1517,14 @@ const I18N = {
     fabSortToTime:   'Sort by Date',
     fabSearch:       'Search Games',
     fabLang:         'Language',
+    fabUpdate:       'Check Update',
     searchPlaceholder:'Search game titles...',
     searchHint:      'Type to search',
     searchEmpty:     'No games found',
     deleteConfirm:   'Delete this record?',
     alertNoTitle:    'Please enter a game title',
     updateToast:     '⟳ New version found, updating…',
+    alreadyLatest:   '✓ Already up to date',
     langModalTitle:  'LANGUAGE',
   },
 };
@@ -1545,6 +1591,8 @@ function applyLang() {
   if (sortLabel) sortLabel.textContent = sortMode === 'time' ? t('fabSortToRating') : t('fabSortToTime');
   const fabLangLabel = document.getElementById('fab-lang-label');
   if (fabLangLabel) fabLangLabel.textContent = t('fabLang');
+  const fabUpdateLabel = document.getElementById('fab-update-label');
+  if (fabUpdateLabel) fabUpdateLabel.textContent = t('fabUpdate');
   const fabSearchItem = document.querySelector('.fab-menu-item[onclick="openSearch()"] .fab-menu-label');
   if (fabSearchItem) fabSearchItem.textContent = t('fabSearch');
 
@@ -1573,10 +1621,7 @@ function applyLang() {
   PLATFORM_MAP.pc.label       = t('platPC');
   PLATFORM_MAP.mobile.label   = t('platMobile');
 
-  // Re-render gallery if on main view to update dynamic content
-  if (document.getElementById('view-main').classList.contains('active')) {
-    renderGallery();
-  }
+  // Note: caller is responsible for re-rendering gallery if needed
 }
 
 function setLang(lang) {
@@ -1602,14 +1647,16 @@ function handleLangOverlayClick(e) {
 }
 
 // ══════════ INIT ══════════
-loadGames();
-applyLang();
-renderGallery();
-checkForUpdate();
+document.addEventListener('DOMContentLoaded', function() {
+  loadGames();
+  renderGallery(); // render first so FAB/empty-state appear immediately
+  applyLang();     // then apply language (updates text labels only)
+  checkForUpdate();
+});
 </script>
 
 <!-- ══════════════ FAB MENU (main view only) ══════════════ -->
-<div class="fab-wrap" id="fab-wrap" style="display:none">
+<div class="fab-wrap" id="fab-wrap" style="display:flex">
   <div class="fab-menu-list" id="fab-menu-list">
     <div class="fab-menu-item" onclick="toggleSort()">
       <div class="fab-menu-label" id="sort-label">切换为评分排序</div>
@@ -1621,6 +1668,12 @@ checkForUpdate();
       <div class="fab-menu-label" id="fab-lang-label">切换语言</div>
       <div class="fab-mini">
         <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="#e8ff47" stroke-width="1.8"/><path d="M10 2.5C10 2.5 7 6 7 10s3 7.5 3 7.5M10 2.5C10 2.5 13 6 13 10s-3 7.5-3 7.5M2.5 10h15" stroke="#e8ff47" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+    <div class="fab-menu-item" onclick="manualCheckUpdate()">
+      <div class="fab-menu-label" id="fab-update-label">检查更新</div>
+      <div class="fab-mini">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M3 10a7 7 0 0 1 13-3.5" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/><path d="M17 10a7 7 0 0 1-13 3.5" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/><polyline points="14,3 16.5,6.5 13,6.5" fill="#e8ff47"/><polyline points="6,17 3.5,13.5 7,13.5" fill="#e8ff47"/></svg>
       </div>
     </div>
     <div class="fab-menu-item" onclick="openSearch()">
@@ -1649,7 +1702,7 @@ checkForUpdate();
 </div>
 
 
-<div class="update-toast" id="update-toast">⟳ 发现新版本，正在更新…</div>
+<div class="update-toast" id="update-toast"></div>
 
 <!-- ══════════════ LANGUAGE MODAL ══════════════ -->
 <div class="lang-overlay" id="lang-overlay" onclick="handleLangOverlayClick(event)">
