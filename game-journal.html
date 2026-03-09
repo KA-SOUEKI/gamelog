@@ -617,7 +617,7 @@
 
   /* ─── UPDATE TOAST ─── */
   .update-toast {
-    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
     background: var(--surface);
     border: 1px solid var(--accent);
     color: var(--text);
@@ -626,12 +626,10 @@
     padding: 12px 20px;
     white-space: nowrap;
     z-index: 999;
-    opacity: 0;
-    transition: opacity 0.3s, transform 0.3s;
+    display: none;
     pointer-events: none;
-  }
-  .update-toast.show {
-    opacity: 1; transform: translateX(-50%) translateY(0);
+    max-width: 90vw;
+    text-align: center;
   }
 
   /* ─── LANGUAGE MODAL ─── */
@@ -1273,7 +1271,7 @@ function esc(str) {
 }
 
 // ══════════ AUTO UPDATE ══════════
-const APP_VERSION = '20260310_004';
+const APP_VERSION = '20260310_005';
 const VERSION_STORAGE_KEY = 'gamelog_version';
 
 async function checkForUpdate() {
@@ -1307,11 +1305,7 @@ async function checkForUpdate() {
       // Store the new version so after reload we know we're updated
       sessionStorage.setItem('gamelog_pending_version', remoteVersion);
       // Show toast then hard reload with cache-busting URL
-      const toast = document.getElementById('update-toast');
-      if (toast) {
-        toast.textContent = t('updateToast');
-        toast.classList.add('show');
-      }
+      showUpdateToast('found', remoteVersion);
       setTimeout(() => {
         window.location.href = baseUrl + '?v=' + remoteVersion + '&t=' + Date.now();
       }, 1800);
@@ -1348,11 +1342,12 @@ async function manualCheckUpdate() {
   }
 }
 
+let toastTimer = null;
 function showUpdateToast(state, remoteVer) {
   const toast = document.getElementById('update-toast');
   if (!toast) return;
-  toast.classList.remove('show');
-  void toast.offsetWidth; // reflow
+  if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+
   if (state === 'checking') {
     toast.style.borderColor = 'var(--text-muted)';
     toast.style.color = 'var(--text-muted)';
@@ -1370,11 +1365,14 @@ function showUpdateToast(state, remoteVer) {
     toast.style.color = 'var(--accent2)';
     toast.textContent = '✕ ' + t('updateError');
   }
-  toast.classList.add('show');
+
+  toast.style.display = 'block';
+
   if (state !== 'found') {
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => { toast.style.borderColor = ''; toast.style.color = ''; }, 300);
+    toastTimer = setTimeout(() => {
+      toast.style.display = 'none';
+      toast.style.borderColor = '';
+      toast.style.color = '';
     }, 3000);
   }
 }
@@ -1679,16 +1677,11 @@ function applyLang() {
 }
 
 function setLang(lang) {
-  currentLang = lang;
+  if (lang === currentLang) { closeLangModal(); return; }
   localStorage.setItem(LANG_KEY, lang);
-  applyLang();
-  // Re-render whichever view is active
-  if (document.getElementById('view-main').classList.contains('active')) {
-    renderGallery();
-  } else if (document.getElementById('view-detail').classList.contains('active') && currentGameId) {
-    openDetail(currentGameId);
-  }
-  closeLangModal();
+  // Reload page — language will be picked up fresh from localStorage on init
+  const base = window.location.href.split('?')[0].split('#')[0];
+  window.location.replace(base + '?lang=' + lang + '&t=' + Date.now());
 }
 
 function openLangModal() {
