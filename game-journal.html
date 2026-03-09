@@ -633,6 +633,80 @@
   .update-toast.show {
     opacity: 1; transform: translateX(-50%) translateY(0);
   }
+
+  /* ─── LANGUAGE MODAL ─── */
+  .lang-overlay {
+    position: fixed; inset: 0; z-index: 400;
+    background: rgba(0,0,0,0.82);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.22s;
+  }
+  .lang-overlay.open { opacity: 1; pointer-events: auto; }
+  .lang-box {
+    width: min(88vw, 360px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transform: scale(0.94);
+    transition: transform 0.22s;
+  }
+  .lang-overlay.open .lang-box { transform: scale(1); }
+  .lang-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .lang-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px; letter-spacing: 3px; color: var(--accent);
+  }
+  .lang-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 18px;
+    transition: color 0.15s;
+  }
+  .lang-close:hover { color: var(--text); }
+  .lang-options { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .lang-option {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .lang-option:hover { border-color: var(--accent); background: var(--surface2); }
+  .lang-option.active { border-color: var(--accent); background: var(--surface2); }
+  .lang-option-left { display: flex; align-items: center; gap: 14px; }
+  .lang-flag {
+    font-size: 24px; line-height: 1;
+  }
+  .lang-name {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 18px; letter-spacing: 2px;
+  }
+  .lang-native {
+    font-size: 12px; color: var(--text-muted); margin-top: 2px;
+    font-family: 'Noto Sans SC', sans-serif;
+  }
+  .lang-check {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s;
+  }
+  .lang-option.active .lang-check {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+  .lang-option.active .lang-check::after {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--bg);
+    border-radius: 50%;
+    display: block;
+  }
+
 </style>
 </head>
 <body>
@@ -767,12 +841,14 @@ function showView(name) {
 }
 
 // ══════════ GALLERY ══════════
-const STATUS_MAP = {
-  clear:   { label: '通关', cls: 'badge-clear' },
-  playing: { label: '游玩中', cls: 'badge-playing' },
-  drop:    { label: '放弃', cls: 'badge-drop' },
-  achieve: { label: '全成就', cls: 'badge-achieve' },
-};
+function getStatusMap() {
+  return {
+    clear:   { label: t('statusClearShort'),   cls: 'badge-clear' },
+    playing: { label: t('statusPlayingShort'), cls: 'badge-playing' },
+    drop:    { label: t('statusDropShort'),    cls: 'badge-drop' },
+    achieve: { label: t('statusAchieveShort'), cls: 'badge-achieve' },
+  };
+}
 
 // Flat SVG icons for each platform
 const PLATFORM_MAP = {
@@ -836,7 +912,7 @@ let sortMode = 'time'; // 'time' | 'rating'
 function toggleSort() {
   sortMode = sortMode === 'time' ? 'rating' : 'time';
   document.getElementById('sort-label').textContent =
-    sortMode === 'time' ? '切换为评分排序' : '切换为时间排序';
+    sortMode === 'time' ? t('fabSortToRating') : t('fabSortToTime');
   renderGallery();
   closeFab();
 }
@@ -921,7 +997,7 @@ function renderGallery() {
 function renderByTime(container) {
   const byYear = {};
   games.forEach(g => {
-    const y = g.logDate ? g.logDate.slice(0,4) : (g.releaseDate ? g.releaseDate.slice(0,4) : '未知');
+    const y = g.logDate ? g.logDate.slice(0,4) : (g.releaseDate ? g.releaseDate.slice(0,4) : t('unknownYear'));
     if (!byYear[y]) byYear[y] = [];
     byYear[y].push(g);
   });
@@ -959,7 +1035,7 @@ function renderByRating(container) {
       const db = b.logDate || b.releaseDate || '';
       return da < db ? -1 : 1;
     });
-    const label = key === '__unrated__' ? '未评分' : key;
+    const label = key === '__unrated__' ? t('unrated') : key;
     return `<div class="score-section">
       <div class="score-label">${label}</div>
       <div class="games-grid">${gs.map(gameCard).join('')}</div>
@@ -968,7 +1044,7 @@ function renderByRating(container) {
 }
 
 function gameCard(g) {
-  const st = STATUS_MAP[g.status] || {};
+  const st = getStatusMap()[g.status] || {};
   const cover = g.coverData
     ? `<img src="${g.coverData}" alt="${esc(g.title)}">`
     : `<div class="placeholder-cover">🎮</div>`;
@@ -1013,7 +1089,7 @@ function openDetail(id) {
 
   document.getElementById('detail-header-title').textContent = g.title;
 
-  const st = STATUS_MAP[g.status] || {};
+  const st = getStatusMap()[g.status] || {};
   const stColor = g.status === 'clear' ? 'var(--accent)' : g.status === 'achieve' ? '#e8c84a' : g.status === 'playing' ? '#00cfff' : 'var(--text-muted)';
   const cover = g.coverData
     ? `<img src="${g.coverData}" alt="${esc(g.title)}">`
@@ -1021,7 +1097,7 @@ function openDetail(id) {
 
   const ratingHtml = (g.rating != null && g.rating !== '')
     ? `<div class="rating-display"><span class="rating-num">${g.rating}</span><span class="rating-max">/ 10</span></div>`
-    : '<span style="color:var(--text-dim)">未评分</span>';
+    : '<span style="color:var(--text-dim)">' + t('unrated') + '</span>';
 
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-hero">
@@ -1030,37 +1106,37 @@ function openDetail(id) {
         <div class="detail-title">${esc(g.title)}</div>
         <div class="meta-grid">
           <div class="meta-item">
-            <div class="meta-label">游玩平台</div>
+            <div class="meta-label">${t('metaPlatform')}</div>
             <div class="meta-value" style="display:flex;align-items:center;gap:8px">
               ${PLATFORM_MAP[g.platform] ? `<span style="display:inline-flex;width:20px;height:20px">${PLATFORM_MAP[g.platform].svg}</span>${PLATFORM_MAP[g.platform].label}` : '—'}
             </div>
           </div>
           <div class="meta-item">
-            <div class="meta-label">发售日期</div>
+            <div class="meta-label">${t('metaRelease')}</div>
             <div class="meta-value">${g.releaseDate || '—'}</div>
           </div>
           <div class="meta-item">
-            <div class="meta-label">记录时间</div>
+            <div class="meta-label">${t('metaLogDate')}</div>
             <div class="meta-value">${g.logDate || '—'}</div>
           </div>
           <div class="meta-item">
-            <div class="meta-label">通关情况</div>
+            <div class="meta-label">${t('metaStatus')}</div>
             <div class="meta-value">
               <span class="status-chip" style="background:${stColor};color:${g.status === 'drop' ? 'var(--text)' : 'var(--bg)'}">${st.label||'—'}</span>
             </div>
           </div>
           <div class="meta-item meta-item-full">
-            <div class="meta-label">我的评分</div>
+            <div class="meta-label">${t('metaRating')}</div>
             <div class="meta-value">${ratingHtml}</div>
           </div>
         </div>
       </div>
     </div>
     <div class="detail-review">
-      <div class="section-label">短评</div>
+      <div class="section-label">${t('metaReviewSection')}</div>
       ${g.review
         ? `<div class="review-text">${esc(g.review)}</div>`
-        : `<div class="review-empty">还没有短评</div>`}
+        : `<div class="review-empty">${t('noReview')}</div>`}
     </div>`;
 
   showView('detail');
@@ -1076,7 +1152,7 @@ function openForm(id) {
 
   if (id) {
     const g = games.find(x => x.id === id);
-    document.getElementById('form-title').textContent = '编辑游戏';
+    document.getElementById('form-title').textContent = t('formTitleEdit');
     document.getElementById('f-id').value = g.id;
     document.getElementById('f-title').value = g.title || '';
     document.getElementById('f-release').value = g.releaseDate || '';
@@ -1105,7 +1181,7 @@ function openForm(id) {
     }
     document.getElementById('form-delete-btn').style.display = 'inline-block';
   } else {
-    document.getElementById('form-title').textContent = '新增游戏';
+    document.getElementById('form-title').textContent = t('formTitleNew');
     document.getElementById('f-id').value = '';
     document.getElementById('f-title').value = '';
     document.getElementById('f-release').value = '';
@@ -1162,7 +1238,7 @@ function previewUrl(url) {
 
 function saveGame() {
   const title = document.getElementById('f-title').value.trim();
-  if (!title) { alert('请填写游戏标题'); return; }
+  if (!title) { alert(t('alertNoTitle')); return; }
 
   const id = document.getElementById('f-id').value || genId();
   const rating = ratingUnset ? '' : document.getElementById('f-rating').value;
@@ -1188,7 +1264,7 @@ function saveGame() {
 }
 
 function deleteGame() {
-  if (!confirm('确定要删除这条记录吗？')) return;
+  if (!confirm(t('deleteConfirm'))) return;
   const id = document.getElementById('f-id').value;
   games = games.filter(x => x.id !== id);
   saveGames();
@@ -1201,7 +1277,7 @@ function esc(str) {
 }
 
 // ══════════ AUTO UPDATE ══════════
-const APP_VERSION = '20260310_001';
+const APP_VERSION = '20260310_002';
 
 async function checkForUpdate() {
   try {
@@ -1223,8 +1299,311 @@ async function checkForUpdate() {
   }
 }
 
+// ══════════ I18N ══════════
+const LANG_KEY = 'gamelog_lang';
+let currentLang = localStorage.getItem(LANG_KEY) || 'zh';
+
+const I18N = {
+  zh: {
+    appTitle:        'GAME LOG',
+    btnAdd:          '＋ 新增游戏',
+    btnEdit:         '编辑',
+    btnSave:         '保存',
+    btnCancel:       '取消',
+    btnDelete:       '删除记录',
+    btnBack:         '← BACK',
+    formTitleNew:    '新增游戏',
+    formTitleEdit:   '编辑游戏',
+    labelCover:      '游戏封面',
+    labelTitle:      '游戏标题 *',
+    labelRelease:    t('metaRelease'),
+    labelLogDate:    '我的记录时间',
+    labelPlatform:   t('metaPlatform'),
+    labelStatus:     t('metaStatus'),
+    labelRating:     t('metaRating'),
+    labelReview:     '短评',
+    placeholderTitle:'输入游戏名称',
+    placeholderReview:'写下你的感受...',
+    coverHint:       '支持 JPG / PNG / WebP<br>也可以填入图片网址↓',
+    btnUploadImg:    '上传图片',
+    platNone:        '不指定',
+    platNintendo:    '任天堂',
+    platSony:        '索尼',
+    platMicrosoft:   '微软',
+    platPC:          'PC',
+    platMobile:      '手机',
+    statusPlaying:   '游玩中',
+    statusClear:     '已通关',
+    statusAchieve:   '全成就',
+    statusDrop:      '放弃了',
+    statusPlayingShort: '游玩中',
+    statusClearShort:   '通关',
+    statusAchieveShort: '全成就',
+    statusDropShort:    '放弃',
+    metaPlatform:    t('metaPlatform'),
+    metaRelease:     t('metaRelease'),
+    metaLogDate:     t('metaLogDate'),
+    metaStatus:      t('metaStatus'),
+    metaRating:      t('metaRating'),
+    metaReviewSection:'短评',
+    noReview:        t('noReview'),
+    noRating:        t('unrated'),
+    unrated:         t('unrated'),
+    unknownYear:     t('unknownYear'),
+    emptyState:      '还没有记录 — 点击右上角新增游戏',
+    fabSortToRating: t('fabSortToRating'),
+    fabSortToTime:   t('fabSortToTime'),
+    fabSearch:       '搜索游戏',
+    fabLang:         '切换语言',
+    searchPlaceholder:'搜索游戏标题...',
+    searchHint:      '输入关键词开始搜索',
+    searchEmpty:     '没有找到匹配的游戏',
+    deleteConfirm:   t('deleteConfirm'),
+    alertNoTitle:    t('alertNoTitle'),
+    updateToast:     '⟳ 发现新版本，正在更新…',
+    langModalTitle:  'LANGUAGE',
+  },
+  ja: {
+    appTitle:        'GAME LOG',
+    btnAdd:          '＋ ゲームを追加',
+    btnEdit:         '編集',
+    btnSave:         '保存',
+    btnCancel:       'キャンセル',
+    btnDelete:       '記録を削除',
+    btnBack:         '← BACK',
+    formTitleNew:    'ゲームを追加',
+    formTitleEdit:   'ゲームを編集',
+    labelCover:      'カバー画像',
+    labelTitle:      'ゲームタイトル *',
+    labelRelease:    '発売日',
+    labelLogDate:    '記録日',
+    labelPlatform:   'プラットフォーム',
+    labelStatus:     '進捗状況',
+    labelRating:     'マイスコア',
+    labelReview:     'レビュー',
+    placeholderTitle:'タイトルを入力',
+    placeholderReview:'感想を書いてください...',
+    coverHint:       'JPG / PNG / WebP 対応<br>または画像URLを入力↓',
+    btnUploadImg:    '画像をアップロード',
+    platNone:        '指定なし',
+    platNintendo:    '任天堂',
+    platSony:        'ソニー',
+    platMicrosoft:   'マイクロソフト',
+    platPC:          'PC',
+    platMobile:      'スマホ',
+    statusPlaying:   'プレイ中',
+    statusClear:     'クリア済み',
+    statusAchieve:   '全実績',
+    statusDrop:      'ドロップ',
+    statusPlayingShort: 'プレイ中',
+    statusClearShort:   'クリア',
+    statusAchieveShort: '全実績',
+    statusDropShort:    'ドロップ',
+    metaPlatform:    'プラットフォーム',
+    metaRelease:     '発売日',
+    metaLogDate:     '記録日',
+    metaStatus:      '進捗状況',
+    metaRating:      'マイスコア',
+    metaReviewSection:'レビュー',
+    noReview:        'レビューなし',
+    noRating:        '未評価',
+    unrated:         '未評価',
+    unknownYear:     '不明',
+    emptyState:      '記録なし — 右上のボタンから追加',
+    fabSortToRating: 'スコア順に切替',
+    fabSortToTime:   '時系列順に切替',
+    fabSearch:       'ゲームを検索',
+    fabLang:         '言語切替',
+    searchPlaceholder:'ゲームタイトルを検索...',
+    searchHint:      'キーワードを入力して検索',
+    searchEmpty:     '該当するゲームが見つかりません',
+    deleteConfirm:   'この記録を削除しますか？',
+    alertNoTitle:    'タイトルを入力してください',
+    updateToast:     '⟳ 新バージョンを検出、更新中…',
+    langModalTitle:  'LANGUAGE',
+  },
+  en: {
+    appTitle:        'GAME LOG',
+    btnAdd:          '＋ ADD GAME',
+    btnEdit:         'EDIT',
+    btnSave:         'SAVE',
+    btnCancel:       'CANCEL',
+    btnDelete:       'DELETE',
+    btnBack:         '← BACK',
+    formTitleNew:    'ADD GAME',
+    formTitleEdit:   'EDIT GAME',
+    labelCover:      'COVER IMAGE',
+    labelTitle:      'GAME TITLE *',
+    labelRelease:    'RELEASE DATE',
+    labelLogDate:    'LOG DATE',
+    labelPlatform:   'PLATFORM',
+    labelStatus:     'STATUS',
+    labelRating:     'MY RATING',
+    labelReview:     'REVIEW',
+    placeholderTitle:'Enter game title',
+    placeholderReview:'Write your thoughts...',
+    coverHint:       'JPG / PNG / WebP supported<br>or paste an image URL below↓',
+    btnUploadImg:    'UPLOAD IMAGE',
+    platNone:        'Unspecified',
+    platNintendo:    'Nintendo',
+    platSony:        'Sony',
+    platMicrosoft:   'Microsoft',
+    platPC:          'PC',
+    platMobile:      'Mobile',
+    statusPlaying:   'Playing',
+    statusClear:     'Completed',
+    statusAchieve:   'All Achieve',
+    statusDrop:      'Dropped',
+    statusPlayingShort: 'Playing',
+    statusClearShort:   'Clear',
+    statusAchieveShort: 'Achieve',
+    statusDropShort:    'Drop',
+    metaPlatform:    'PLATFORM',
+    metaRelease:     'RELEASE',
+    metaLogDate:     'LOG DATE',
+    metaStatus:      'STATUS',
+    metaRating:      'MY RATING',
+    metaReviewSection:'REVIEW',
+    noReview:        'No review yet',
+    noRating:        'Unrated',
+    unrated:         'Unrated',
+    unknownYear:     'Unknown',
+    emptyState:      'No games yet — tap + to add one',
+    fabSortToRating: 'Sort by Rating',
+    fabSortToTime:   'Sort by Date',
+    fabSearch:       'Search Games',
+    fabLang:         'Language',
+    searchPlaceholder:'Search game titles...',
+    searchHint:      'Type to search',
+    searchEmpty:     'No games found',
+    deleteConfirm:   'Delete this record?',
+    alertNoTitle:    'Please enter a game title',
+    updateToast:     '⟳ New version found, updating…',
+    langModalTitle:  'LANGUAGE',
+  },
+};
+
+function t(key) {
+  return (I18N[currentLang] && I18N[currentLang][key]) || I18N['zh'][key] || key;
+}
+
+function applyLang() {
+  // Static DOM elements
+  document.querySelector('.btn-add').textContent = t('btnAdd');
+  document.querySelector('.btn-edit').textContent = t('btnEdit');
+  document.getElementById('form-cancel-btn').textContent = t('btnCancel');
+  document.getElementById('form-delete-btn').textContent = t('btnDelete');
+  document.querySelector('.btn-save').textContent = t('btnSave');
+
+  // Form labels
+  const labels = document.querySelectorAll('.form-label');
+  const labelKeys = ['labelCover','labelTitle','labelRelease','labelLogDate','labelPlatform','labelStatus',null,'labelReview'];
+  // rating label has a span inside, handle separately
+  labels.forEach((el, i) => {
+    if (i === 6) {
+      // rating label — keep span
+      el.innerHTML = t('labelRating') + ' — <span id="rating-label">—</span>';
+    } else if (labelKeys[i]) {
+      el.textContent = t(labelKeys[i]);
+    }
+  });
+
+  // Platform options
+  const platSel = document.getElementById('f-platform');
+  if (platSel) {
+    platSel.options[0].text = t('platNone');
+    platSel.options[1].text = t('platNintendo');
+    platSel.options[2].text = t('platSony');
+    platSel.options[3].text = t('platMicrosoft');
+    platSel.options[4].text = t('platPC');
+    platSel.options[5].text = t('platMobile');
+  }
+
+  // Status options
+  const statSel = document.getElementById('f-status');
+  if (statSel) {
+    statSel.options[0].text = t('statusPlaying');
+    statSel.options[1].text = t('statusClear');
+    statSel.options[2].text = t('statusAchieve');
+    statSel.options[3].text = t('statusDrop');
+  }
+
+  // Input placeholders
+  const titleInput = document.getElementById('f-title');
+  if (titleInput) titleInput.placeholder = t('placeholderTitle');
+  const reviewInput = document.getElementById('f-review');
+  if (reviewInput) reviewInput.placeholder = t('placeholderReview');
+
+  // Cover hint
+  const hint = document.querySelector('.cover-hint');
+  if (hint) hint.innerHTML = t('coverHint');
+  const uploadBtn = document.querySelector('.btn-cancel[onclick*="f-cover-file"]');
+  if (uploadBtn) uploadBtn.textContent = t('btnUploadImg');
+
+  // FAB labels
+  const sortLabel = document.getElementById('sort-label');
+  if (sortLabel) sortLabel.textContent = sortMode === 'time' ? t('fabSortToRating') : t('fabSortToTime');
+  const fabLangLabel = document.getElementById('fab-lang-label');
+  if (fabLangLabel) fabLangLabel.textContent = t('fabLang');
+  const fabSearchItem = document.querySelector('.fab-menu-item[onclick="openSearch()"] .fab-menu-label');
+  if (fabSearchItem) fabSearchItem.textContent = t('fabSearch');
+
+  // Search placeholder
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) searchInput.placeholder = t('searchPlaceholder');
+
+  // Update toast
+  const toast = document.getElementById('update-toast');
+  if (toast && !toast.classList.contains('show')) toast.textContent = t('updateToast');
+
+  // Lang modal title
+  const langModalTitle = document.getElementById('lang-modal-title');
+  if (langModalTitle) langModalTitle.textContent = t('langModalTitle');
+
+  // Update active state in lang modal
+  ['zh','ja','en'].forEach(l => {
+    const el = document.getElementById('lang-opt-' + l);
+    if (el) el.classList.toggle('active', l === currentLang);
+  });
+
+  // PLATFORM_MAP labels (dynamic - update in map)
+  PLATFORM_MAP.nintendo.label = t('platNintendo');
+  PLATFORM_MAP.sony.label     = t('platSony');
+  PLATFORM_MAP.microsoft.label= t('platMicrosoft');
+  PLATFORM_MAP.pc.label       = t('platPC');
+  PLATFORM_MAP.mobile.label   = t('platMobile');
+
+  // Re-render gallery if on main view to update dynamic content
+  if (document.getElementById('view-main').classList.contains('active')) {
+    renderGallery();
+  }
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem(LANG_KEY, lang);
+  applyLang();
+  closeLangModal();
+}
+
+function openLangModal() {
+  closeFab();
+  ['zh','ja','en'].forEach(l => {
+    const el = document.getElementById('lang-opt-' + l);
+    if (el) el.classList.toggle('active', l === currentLang);
+  });
+  document.getElementById('lang-overlay').classList.add('open');
+}
+function closeLangModal() {
+  document.getElementById('lang-overlay').classList.remove('open');
+}
+function handleLangOverlayClick(e) {
+  if (e.target === document.getElementById('lang-overlay')) closeLangModal();
+}
+
 // ══════════ INIT ══════════
 loadGames();
+applyLang();
 renderGallery();
 checkForUpdate();
 </script>
@@ -1236,6 +1615,12 @@ checkForUpdate();
       <div class="fab-menu-label" id="sort-label">切换为评分排序</div>
       <div class="fab-mini">
         <svg viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h8M4 15h5" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/><path d="M15 8l2 2 2-2" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+    <div class="fab-menu-item" onclick="openLangModal()">
+      <div class="fab-menu-label" id="fab-lang-label">切换语言</div>
+      <div class="fab-mini">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="#e8ff47" stroke-width="1.8"/><path d="M10 2.5C10 2.5 7 6 7 10s3 7.5 3 7.5M10 2.5C10 2.5 13 6 13 10s-3 7.5-3 7.5M2.5 10h15" stroke="#e8ff47" stroke-width="1.5" stroke-linecap="round"/></svg>
       </div>
     </div>
     <div class="fab-menu-item" onclick="openSearch()">
@@ -1265,5 +1650,48 @@ checkForUpdate();
 
 
 <div class="update-toast" id="update-toast">⟳ 发现新版本，正在更新…</div>
+
+<!-- ══════════════ LANGUAGE MODAL ══════════════ -->
+<div class="lang-overlay" id="lang-overlay" onclick="handleLangOverlayClick(event)">
+  <div class="lang-box">
+    <div class="lang-header">
+      <div class="lang-title" id="lang-modal-title">LANGUAGE</div>
+      <button class="lang-close" onclick="closeLangModal()">✕</button>
+    </div>
+    <div class="lang-options">
+      <div class="lang-option" id="lang-opt-zh" onclick="setLang('zh')">
+        <div class="lang-option-left">
+          <div class="lang-flag">🇨🇳</div>
+          <div>
+            <div class="lang-name">CHINESE</div>
+            <div class="lang-native">简体中文</div>
+          </div>
+        </div>
+        <div class="lang-check"></div>
+      </div>
+      <div class="lang-option" id="lang-opt-ja" onclick="setLang('ja')">
+        <div class="lang-option-left">
+          <div class="lang-flag">🇯🇵</div>
+          <div>
+            <div class="lang-name">JAPANESE</div>
+            <div class="lang-native">日本語</div>
+          </div>
+        </div>
+        <div class="lang-check"></div>
+      </div>
+      <div class="lang-option" id="lang-opt-en" onclick="setLang('en')">
+        <div class="lang-option-left">
+          <div class="lang-flag">🇺🇸</div>
+          <div>
+            <div class="lang-name">ENGLISH</div>
+            <div class="lang-native">English</div>
+          </div>
+        </div>
+        <div class="lang-check"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
