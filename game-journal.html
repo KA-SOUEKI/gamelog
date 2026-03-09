@@ -243,6 +243,7 @@
     background: var(--surface);
     padding: 16px;
   }
+  .meta-item-full { grid-column: 1 / -1; }
   .meta-label {
     font-size: 10px; font-weight: 700;
     letter-spacing: 2px; text-transform: uppercase;
@@ -451,7 +452,8 @@
     .detail-review { padding: 0 16px 24px; }
     .form-body { padding: 24px 16px; }
     .games-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
-    .meta-grid { grid-template-columns: 1fr; }
+    .meta-grid { grid-template-columns: repeat(2, 1fr); }
+    .meta-item-full { grid-column: 1 / -1; }
   }
 </style>
 </head>
@@ -759,7 +761,7 @@ function openDetail(id) {
               <span class="status-chip" style="background:${stColor};color:${g.status === 'drop' ? 'var(--text)' : 'var(--bg)'}">${st.label||'—'}</span>
             </div>
           </div>
-          <div class="meta-item">
+          <div class="meta-item meta-item-full">
             <div class="meta-label">我的评分</div>
             <div class="meta-value">${ratingHtml}</div>
           </div>
