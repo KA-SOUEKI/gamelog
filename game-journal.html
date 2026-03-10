@@ -103,6 +103,13 @@
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 16px;
   }
+  /* small cover mode */
+  body.cover-small .games-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+  }
+  body.cover-small .year-label { font-size: 48px; }
+  body.cover-small .score-label { font-size: 40px; }
   .game-card {
     cursor: pointer;
     position: relative;
@@ -834,6 +841,7 @@ const I18N = {
     noReview:'还没有短评', unrated:'未评分', unknownYear:'未知',
     emptyState:'还没有记录 — 点击右上角新增游戏',
     fabSortToRating:'切换为评分排序', fabSortToTime:'切换为时间排序',
+    fabCoverSmall:'切换为小封面', fabCoverLarge:'切换为大封面',
     fabSearch:'搜索游戏', fabLang:'切换语言', fabUpdate:'检查更新',
     searchPlaceholder:'搜索游戏标题...', searchHint:'输入关键词开始搜索',
     searchEmpty:'没有找到匹配的游戏',
@@ -860,6 +868,7 @@ const I18N = {
     noReview:'レビューなし', unrated:'未評価', unknownYear:'不明',
     emptyState:'記録なし — 右上のボタンから追加',
     fabSortToRating:'スコア順に切替', fabSortToTime:'時系列順に切替',
+    fabCoverSmall:'小さいカバーに', fabCoverLarge:'大きいカバーに',
     fabSearch:'ゲームを検索', fabLang:'言語切替', fabUpdate:'更新を確認',
     searchPlaceholder:'ゲームタイトルを検索...', searchHint:'キーワードを入力して検索',
     searchEmpty:'該当するゲームが見つかりません',
@@ -886,6 +895,7 @@ const I18N = {
     noReview:'No review yet', unrated:'Unrated', unknownYear:'Unknown',
     emptyState:'No games yet — tap + to add one',
     fabSortToRating:'Sort by Rating', fabSortToTime:'Sort by Date',
+    fabCoverSmall:'Small Covers', fabCoverLarge:'Large Covers',
     fabSearch:'Search Games', fabLang:'Language', fabUpdate:'Check Update',
     searchPlaceholder:'Search game titles...', searchHint:'Type to search',
     searchEmpty:'No games found',
@@ -903,7 +913,7 @@ function t(key) {
 
 // ══════════ DATA ══════════
 const STORAGE_KEY = 'gamelog_v1';
-const APP_VERSION = '20260310_009';
+const APP_VERSION = '20260310_010';
 const IDB_NAME = 'gamelog_images';
 const IDB_STORE = 'covers';
 let games = [];
@@ -1059,12 +1069,22 @@ const PLATFORM_MAP = {
 
 // ══════════ SORT & FAB ══════════
 let sortMode = 'time';
+let coverSize = localStorage.getItem('gamelog_coversize') || 'large'; // 'large' | 'small'
 
 function toggleSort() {
   sortMode = sortMode === 'time' ? 'rating' : 'time';
   const lbl = document.getElementById('sort-label');
   if (lbl) lbl.textContent = t(sortMode === 'time' ? 'fabSortToRating' : 'fabSortToTime');
   renderGallery();
+  closeFab();
+}
+
+function toggleCoverSize() {
+  coverSize = coverSize === 'large' ? 'small' : 'large';
+  localStorage.setItem('gamelog_coversize', coverSize);
+  document.body.classList.toggle('cover-small', coverSize === 'small');
+  const lbl = document.getElementById('cover-size-label');
+  if (lbl) lbl.textContent = t(coverSize === 'large' ? 'fabCoverSmall' : 'fabCoverLarge');
   closeFab();
 }
 
@@ -1441,6 +1461,7 @@ function applyLang() {
   const sortLbl = document.getElementById('sort-label');
   if (sortLbl) sortLbl.textContent = t(sortMode === 'time' ? 'fabSortToRating' : 'fabSortToTime');
   const fl = document.getElementById('fab-lang-label'); if (fl) fl.textContent = t('fabLang');
+  const csl = document.getElementById('cover-size-label'); if (csl) csl.textContent = t(coverSize === 'large' ? 'fabCoverSmall' : 'fabCoverLarge');
   const fu = document.getElementById('fab-update-label'); if (fu) fu.textContent = t('fabUpdate');
   const fs = document.getElementById('fab-search-label'); if (fs) fs.textContent = t('fabSearch');
 
@@ -1576,6 +1597,8 @@ async function init() {
   try { await openIDB(); } catch(e) { console.warn('IDB unavailable', e); }
   loadGames();
   await loadCoversIntoGames();
+  // Apply saved cover size
+  document.body.classList.toggle('cover-small', coverSize === 'small');
   applyLang();
   renderGallery();
   checkForUpdate();
@@ -1590,6 +1613,12 @@ init();
       <div class="fab-menu-label" id="sort-label">切换为评分排序</div>
       <div class="fab-mini">
         <svg viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h8M4 15h5" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/><path d="M15 8l2 2 2-2" stroke="#e8ff47" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+    <div class="fab-menu-item" onclick="toggleCoverSize()">
+      <div class="fab-menu-label" id="cover-size-label">切换为小封面</div>
+      <div class="fab-mini">
+        <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="9" rx="1" stroke="#e8ff47" stroke-width="1.7"/><rect x="11" y="2" width="7" height="9" rx="1" stroke="#e8ff47" stroke-width="1.7"/><rect x="2" y="13" width="7" height="5" rx="1" stroke="#e8ff47" stroke-width="1.5"/><rect x="11" y="13" width="7" height="5" rx="1" stroke="#e8ff47" stroke-width="1.5"/></svg>
       </div>
     </div>
     <div class="fab-menu-item" onclick="openLangModal()">
