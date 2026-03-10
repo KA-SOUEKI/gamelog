@@ -840,6 +840,7 @@ const I18N = {
     deleteConfirm:'确定要删除这条记录吗？', alertNoTitle:'请填写游戏标题',
     updateChecking:'正在检查更新', updateFound:'发现新版本，正在更新',
     alreadyLatest:'已是最新版本', updateError:'检查更新失败，请检查网络',
+    storageFullText:'存储空间不足，请删除部分记录后重试',
     langModalTitle:'LANGUAGE',
   },
   ja: {
@@ -865,6 +866,7 @@ const I18N = {
     deleteConfirm:'この記録を削除しますか？', alertNoTitle:'タイトルを入力してください',
     updateChecking:'更新を確認中', updateFound:'新バージョンを検出、更新中',
     alreadyLatest:'最新バージョンです', updateError:'更新確認失敗、ネットワークを確認',
+    storageFullText:'ストレージ不足、一部の記録を削除してください',
     langModalTitle:'LANGUAGE',
   },
   en: {
@@ -890,6 +892,7 @@ const I18N = {
     deleteConfirm:'Delete this record?', alertNoTitle:'Please enter a game title',
     updateChecking:'Checking for updates', updateFound:'New version found, updating',
     alreadyLatest:'Already up to date', updateError:'Update check failed, check network',
+    storageFullText:'Storage full. Please delete some records and try again.',
     langModalTitle:'LANGUAGE',
   },
 };
@@ -900,17 +903,85 @@ function t(key) {
 
 // ══════════ DATA ══════════
 const STORAGE_KEY = 'gamelog_v1';
-const APP_VERSION = '20260310_008';
+const APP_VERSION = '20260310_009';
+const IDB_NAME = 'gamelog_images';
+const IDB_STORE = 'covers';
 let games = [];
 let currentGameId = null;
 let formReturnView = 'main';
+let idb = null; // IndexedDB instance
 
+// ── IndexedDB setup ──
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = e => {
+      e.target.result.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = e => { idb = e.target.result; resolve(idb); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbPut(key, value) {
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction(IDB_STORE, 'readwrite');
+    const req = tx.objectStore(IDB_STORE).put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbGet(key) {
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbDelete(key) {
+  return new Promise((resolve) => {
+    try {
+      const tx = idb.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = resolve;
+    } catch(e) { resolve(); }
+  });
+}
+
+// ── Image compression ──
+function compressImage(dataUrl, maxWidth) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// ── Game data (text only, no images) ──
 function loadGames() {
   try { games = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
   catch(e) { games = []; }
 }
 function saveGames() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(games));
+  // Strip any legacy coverData before saving to localStorage
+  const slim = games.map(g => { const c = {...g}; delete c.coverData; return c; });
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+  } catch(e) {
+    alert(t ? t('storageFullText') : '存储空间不足，请删除部分记录后重试');
+  }
 }
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2,6);
@@ -1244,26 +1315,53 @@ function handleCoverFile(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
-    const data = e.target.result;
-    document.getElementById('f-cover-data').value = data;
-    document.getElementById('cover-preview').innerHTML = `<img src="${data}" alt="">`;
+  reader.onload = async e => {
+    const compressed = await compressImage(e.target.result, 400);
+    document.getElementById('f-cover-data').value = compressed;
+    document.getElementById('cover-preview').innerHTML = `<img src="${compressed}" alt="">`;
     document.getElementById('f-cover-url').value = '';
   };
   reader.readAsDataURL(file);
 }
 
 function previewUrl(url) {
-  if (!url) { document.getElementById('cover-preview').innerHTML = '🎮'; document.getElementById('f-cover-data').value = ''; return; }
+  if (!url) {
+    document.getElementById('cover-preview').innerHTML = '🎮';
+    document.getElementById('f-cover-data').value = '';
+    return;
+  }
   document.getElementById('f-cover-data').value = url;
   document.getElementById('cover-preview').innerHTML = `<img src="${url}" alt="" onerror="this.parentElement.innerHTML='❌'">`;
 }
 
-function saveGame() {
+async function saveGame() {
   const title = document.getElementById('f-title').value.trim();
   if (!title) { alert(t('alertNoTitle')); return; }
   const id = document.getElementById('f-id').value || genId();
   const rating = ratingUnset ? '' : document.getElementById('f-rating').value;
+  const coverRaw = document.getElementById('f-cover-data').value;
+
+  // Determine if cover is local (base64) or remote URL
+  let coverRef = ''; // what we store in game object
+  if (coverRaw) {
+    if (coverRaw.startsWith('data:')) {
+      // Local image — store in IDB
+      try {
+        await idbPut(id, coverRaw);
+        coverRef = 'idb:' + id;
+      } catch(e) {
+        alert(t('storageFullText'));
+        return;
+      }
+    } else {
+      // Remote URL — store directly (no IDB needed)
+      coverRef = coverRaw;
+    }
+  } else {
+    // No cover — clean up any old IDB entry
+    await idbDelete(id);
+  }
+
   const g = {
     id, title,
     releaseDate: document.getElementById('f-release').value,
@@ -1272,21 +1370,25 @@ function saveGame() {
     platform: document.getElementById('f-platform').value,
     rating,
     review: document.getElementById('f-review').value.trim(),
-    coverData: document.getElementById('f-cover-data').value,
+    coverRef, // 'idb:ID' | 'https://...' | ''
   };
   const idx = games.findIndex(x => x.id === id);
   if (idx >= 0) games[idx] = g; else games.push(g);
   saveGames();
   currentGameId = id;
+  // Reload covers then render
+  await loadCoversIntoGames();
   renderGallery();
   openDetail(id);
 }
 
-function deleteGame() {
+async function deleteGame() {
   if (!confirm(t('deleteConfirm'))) return;
   const id = document.getElementById('f-id').value;
+  await idbDelete(id);
   games = games.filter(x => x.id !== id);
   saveGames();
+  await loadCoversIntoGames();
   renderGallery();
   showView('main');
 }
@@ -1441,11 +1543,44 @@ function manualCheckUpdate() {
   xhr.send();
 }
 
+// ══════════ COVER LOADER ══════════
+// Loads IDB images into games[].coverData for rendering
+async function loadCoversIntoGames() {
+  for (const g of games) {
+    // Support legacy coverData field (old records stored base64 directly)
+    if (g.coverData && !g.coverRef) {
+      // Migrate: move to IDB, update ref
+      try {
+        await idbPut(g.id, g.coverData);
+        g.coverRef = 'idb:' + g.id;
+        delete g.coverData;
+      } catch(e) {}
+    }
+
+    if (!g.coverRef) { g.coverData = ''; continue; }
+
+    if (g.coverRef.startsWith('idb:')) {
+      const key = g.coverRef.slice(4);
+      g.coverData = await idbGet(key) || '';
+    } else {
+      // Remote URL
+      g.coverData = g.coverRef;
+    }
+  }
+  // Save migrated data
+  saveGames();
+}
+
 // ══════════ INIT ══════════
-loadGames();
-applyLang();
-renderGallery();
-checkForUpdate();
+async function init() {
+  try { await openIDB(); } catch(e) { console.warn('IDB unavailable', e); }
+  loadGames();
+  await loadCoversIntoGames();
+  applyLang();
+  renderGallery();
+  checkForUpdate();
+}
+init();
 </script>
 
 <!-- ══════════════ FAB MENU (main view only) ══════════════ -->
