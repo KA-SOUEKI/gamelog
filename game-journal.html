@@ -100,13 +100,13 @@
   }
   .games-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
   }
-  /* small cover mode */
+  /* small cover mode — always 4 columns regardless of screen */
   body.cover-small .games-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
   }
   body.cover-small .year-label { font-size: 48px; }
   body.cover-small .score-label { font-size: 40px; }
@@ -468,7 +468,7 @@
     .detail-title { font-size: 28px; text-align: center; }
     .detail-review { padding: 0 16px 24px; }
     .form-body { padding: 24px 16px; }
-    .games-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+    .games-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
     .meta-grid { grid-template-columns: repeat(2, 1fr); }
     .meta-item-full { grid-column: 1 / -1; }
   }
@@ -913,7 +913,7 @@ function t(key) {
 
 // ══════════ DATA ══════════
 const STORAGE_KEY = 'gamelog_v1';
-const APP_VERSION = '20260310_010';
+const APP_VERSION = '20260310_011';
 const IDB_NAME = 'gamelog_images';
 const IDB_STORE = 'covers';
 let games = [];
